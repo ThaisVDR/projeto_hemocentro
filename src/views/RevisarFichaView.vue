@@ -10,7 +10,7 @@
 
     <div class="cartao progresso">
       <ClipboardCheck :size="18" class="progresso__icone" />
-      <strong>{{ ficha.status === 'validada' ? 'Ficha validada' : 'Conferência documental em andamento' }}</strong>
+      <strong>{{ finalizada ? statusFicha.rotulo : 'Conferência documental em andamento' }}</strong>
       <div class="progresso__barra"><span :style="{ width: `${percentual}%` }" /></div>
       <span class="progresso__numeros">{{ conferencia.resolvidos }} de {{ conferencia.total }} itens conferidos</span>
       <span v-if="conferencia.incertos.length" class="selo selo--alerta">
@@ -19,6 +19,7 @@
       <span class="progresso__dica">Todos os campos podem ser editados.</span>
     </div>
 
+    <p v-if="carregando" class="mensagem mensagem--info">Carregando ficha…</p>
     <p v-if="mensagem" class="mensagem" :class="`mensagem--${mensagem.tipo}`">{{ mensagem.texto }}</p>
 
     <div class="revisao__colunas">
@@ -235,12 +236,13 @@
         </div>
       </div>
       <div class="acoes__botoes">
-        <button type="button" class="botao" @click="sinalizarPendencia"><Flag :size="14" /> Sinalizar pendência</button>
-        <button type="button" class="botao" @click="salvarRascunho">Salvar rascunho</button>
+        <button type="button" class="botao" :disabled="salvando || finalizada" @click="recusar"><Ban :size="14" /> Recusar</button>
+        <button type="button" class="botao" :disabled="salvando || finalizada" @click="sinalizarPendencia"><Flag :size="14" /> Sinalizar pendência</button>
+        <button type="button" class="botao" :disabled="salvando || finalizada" @click="salvarRascunho">Salvar rascunho</button>
         <button
           type="button"
           class="botao botao--primario"
-          :disabled="!conferencia.podeAprovar || ficha.status === 'validada'"
+          :disabled="!conferencia.podeAprovar || salvando || finalizada"
           @click="aprovar"
         >
           <Check :size="14" /> Aprovar e salvar
@@ -251,9 +253,10 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
-  AlertTriangle, ArrowLeft, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
+  AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
 } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import ResumoImunohematologico from '@/components/ResumoImunohematologico.vue'
@@ -261,37 +264,52 @@ import CampoRevisao from '@/components/revisao/CampoRevisao.vue'
 import ConferenciaTabela from '@/components/revisao/ConferenciaTabela.vue'
 import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/DocumentoOriginal.vue'
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
+import { fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { RACA_COR } from '@/domain/paciente'
 import { DadosImunohematologicos, lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
-  DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia
+  DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA
 } from '@/domain/revisao'
 import { formatarTipoSanguineo, TIPOS_SANGUINEOS } from '@/domain/tipoSanguineo'
+import {
+  aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoFicha
+} from '@/services/api'
 
 interface Mensagem {
   tipo: 'sucesso' | 'info' | 'alerta'
   texto: string
 }
 
+function tipoPeloNome(nome: string): string {
+  if (/\.pdf$/i.test(nome)) return 'application/pdf'
+  if (/\.png$/i.test(nome)) return 'image/png'
+  return 'image/jpeg'
+}
+
 export default defineComponent({
   name: 'RevisarFichaView',
   components: {
-    AlertTriangle, ArrowLeft, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
+    AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao
   },
   setup() {
+    const rota = useRoute()
     const ficha = reactive(criarFichaVazia())
-    const ih = ficha.imunohematologia
+    const ih = computed(() => ficha.imunohematologia)
     const pagina = ref(1)
     const mensagem = ref<Mensagem | null>(null)
     const arquivo = ref<ArquivoDocumento | null>(null)
+    const fichaId = computed(() => (rota.params.fichaId as string | undefined) || null)
+    const carregando = ref(false)
+    const salvando = ref(false)
 
     const conferencia = computed(() => resumirConferencia(ficha))
     const percentual = computed(() =>
       Math.round((conferencia.value.resolvidos / conferencia.value.total) * 100)
     )
+    const finalizada = computed(() => ficha.status === 'aprovada' || ficha.status === 'recusada')
 
     const titulo = computed(() => {
       const nome = ficha.identificacao.nome.valor
@@ -303,15 +321,44 @@ export default defineComponent({
       : 'Selecione o documento digitalizado e preencha os campos conforme o original.'
     )
 
-    function selecionarArquivo(novo: File) {
-      if (arquivo.value) URL.revokeObjectURL(arquivo.value.url)
-      arquivo.value = { nome: novo.name, tipo: novo.type, url: URL.createObjectURL(novo) }
+    const statusFicha = computed(() => STATUS_FICHA[ficha.status])
+
+    function trocarArquivo(novo: ArquivoDocumento | null) {
+      if (arquivo.value?.url.startsWith('blob:')) URL.revokeObjectURL(arquivo.value.url)
+      arquivo.value = novo
       pagina.value = 1
     }
 
-    // Os dados ainda não são gravados: avisa antes de sair da página com a ficha em andamento.
+    function selecionarArquivo(novo: File) {
+      trocarArquivo({ nome: novo.name, tipo: novo.type, url: URL.createObjectURL(novo) })
+    }
+
+    async function carregar(id: string | null) {
+      mensagem.value = null
+      if (!id) {
+        Object.assign(ficha, criarFichaVazia())
+        trocarArquivo(null)
+        return
+      }
+      carregando.value = true
+      try {
+        const detalhe = await buscarFicha(id)
+        const salva = detalhe.revisao as FichaEmRevisao | null
+        Object.assign(ficha, salva ? { ...salva, status: detalhe.status } : fichaDaExtracao(detalhe))
+        trocarArquivo({ nome: detalhe.arquivo, tipo: tipoPeloNome(detalhe.arquivo), url: urlArquivoFicha(id) })
+        if (detalhe.erro) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erro}` }
+      } catch (erro) {
+        mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
+      } finally {
+        carregando.value = false
+      }
+    }
+
+    watch(fichaId, carregar, { immediate: true })
+
+    // Evita perder uma revisão em andamento ao fechar ou recarregar a página.
     function avisarAntesDeSair(evento: BeforeUnloadEvent) {
-      if (conferencia.value.resolvidos > 0 && ficha.status !== 'validada') {
+      if (conferencia.value.resolvidos > 0 && !finalizada.value) {
         evento.preventDefault()
         evento.returnValue = ''
       }
@@ -320,25 +367,19 @@ export default defineComponent({
     onMounted(() => window.addEventListener('beforeunload', avisarAntesDeSair))
     onBeforeUnmount(() => {
       window.removeEventListener('beforeunload', avisarAntesDeSair)
-      if (arquivo.value) URL.revokeObjectURL(arquivo.value.url)
+      trocarArquivo(null)
     })
 
-    const statusFicha = computed(() => ({
-      aguardando: { rotulo: 'Aguardando', classe: 'selo--neutro' },
-      em_revisao: { rotulo: 'Em revisão', classe: 'selo--info' },
-      com_pendencia: { rotulo: 'Com pendência', classe: 'selo--alerta' },
-      validada: { rotulo: 'Validada', classe: 'selo--sucesso' }
-    })[ficha.status])
-
     const dadosResumo = computed<DadosImunohematologicos>(() => {
-      const fator = ih.fatorRh.valor === 'Positivo' ? '+' : ih.fatorRh.valor === 'Negativo' ? '-' : ''
-      const grupoDaPagina4 = ih.grupoSanguineo.valor ? `${ih.grupoSanguineo.valor}${fator}` : null
+      const dados = ih.value
+      const fator = dados.fatorRh.valor === 'Positivo' ? '+' : dados.fatorRh.valor === 'Negativo' ? '-' : ''
+      const grupoDaPagina4 = dados.grupoSanguineo.valor ? `${dados.grupoSanguineo.valor}${fator}` : null
       return {
         racaCor: lerCodigoRacaCor(ficha.identificacao.racaCor.valor),
         aboRh: ficha.identificacao.aboRh.valor ?? grupoDaPagina4,
-        fenotipo: ih.fenotipo,
+        fenotipo: dados.fenotipo,
         anticorpos: [
-          ...ih.anticorpos.flatMap(a => extrairAnticorpos(a.especificidade)),
+          ...dados.anticorpos.flatMap(a => extrairAnticorpos(a.especificidade)),
           ...ficha.pesquisas.flatMap(p => extrairAnticorpos(p.interpretacao.valor))
         ]
       }
@@ -363,8 +404,8 @@ export default defineComponent({
 
     function alterarFenotipo(antigeno: string, evento: Event) {
       const valor = (evento.target as HTMLSelectElement).value
-      ih.fenotipo[antigeno] = valor ? (valor as Reacao) : null
-      marcarEditado(ih.fenotipoConferencia)
+      ih.value.fenotipo[antigeno] = valor ? (valor as Reacao) : null
+      marcarEditado(ih.value.fenotipoConferencia)
     }
 
     function adicionarTransfusao() {
@@ -378,36 +419,78 @@ export default defineComponent({
     }
 
     function adicionarAnticorpo() {
-      ih.anticorpos.push({ data: null, metodo: null, especificidade: null, classe: null })
-      marcarEditado(ih.anticorposConferencia)
+      ih.value.anticorpos.push({ data: null, metodo: null, especificidade: null, classe: null })
+      marcarEditado(ih.value.anticorposConferencia)
     }
 
     function removerAnticorpo(indice: number) {
-      ih.anticorpos.splice(indice, 1)
-      marcarEditado(ih.anticorposConferencia)
+      ih.value.anticorpos.splice(indice, 1)
+      marcarEditado(ih.value.anticorposConferencia)
     }
 
-    // TODO: enviar ao backend quando existirem as rotas de rascunho, pendência e aprovação.
-    const AVISO_SEM_GRAVACAO = 'Os dados ainda não foram gravados no banco: a gravação depende da rota do backend.'
+    /** Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar. */
+    async function executar(acao: (id: string) => Promise<void>, sucesso: Mensagem) {
+      if (!fichaId.value) {
+        mensagem.value = {
+          tipo: 'alerta',
+          texto: 'Esta ficha não foi enviada pela tela de Upload, então ainda não existe no banco. ' +
+            'Envie o arquivo pelo Upload: ele passa pela IA e aparece na fila de revisão.'
+        }
+        return false
+      }
+      salvando.value = true
+      try {
+        await acao(fichaId.value)
+        mensagem.value = sucesso
+        return true
+      } catch (erro) {
+        mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
+        return false
+      } finally {
+        salvando.value = false
+      }
+    }
 
-    function aprovar() {
-      ficha.status = 'validada'
-      mensagem.value = { tipo: 'sucesso', texto: `Conferência concluída. ${AVISO_SEM_GRAVACAO}` }
+    async function aprovar() {
+      const ok = await executar(
+        id => aprovarFicha(id, fichaParaEnvio(ficha)),
+        { tipo: 'sucesso', texto: 'Ficha aprovada e gravada no prontuário do paciente.' }
+      )
+      if (ok) ficha.status = 'aprovada'
     }
 
     function salvarRascunho() {
-      mensagem.value = { tipo: 'info', texto: `Rascunho mantido nesta tela. ${AVISO_SEM_GRAVACAO}` }
+      executar(
+        id => salvarRascunhoFicha(id, ficha),
+        { tipo: 'info', texto: 'Rascunho salvo. A ficha continua na fila de revisão.' }
+      )
     }
 
-    function sinalizarPendencia() {
-      ficha.status = 'com_pendencia'
-      mensagem.value = { tipo: 'alerta', texto: `Ficha marcada com pendência. ${AVISO_SEM_GRAVACAO}` }
+    async function sinalizarPendencia() {
+      const motivo = window.prompt('Qual é a pendência desta ficha?')
+      if (!motivo) return
+      const ok = await executar(
+        id => sinalizarPendenciaFicha(id, motivo),
+        { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila.' }
+      )
+      if (ok) ficha.status = 'com_pendencia'
+    }
+
+    async function recusar() {
+      const motivo = window.prompt('Por que esta ficha está sendo recusada? (ex.: documento ilegível ou de outro tipo)')
+      if (!motivo) return
+      const ok = await executar(
+        id => recusarFicha(id, motivo),
+        { tipo: 'alerta', texto: 'Ficha recusada. Ela não entra no prontuário.' }
+      )
+      if (ok) ficha.status = 'recusada'
     }
 
     return {
-      ficha, ih, pagina, mensagem, arquivo, conferencia, percentual, titulo, subtitulo, statusFicha, dadosResumo,
+      ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
+      titulo, subtitulo, statusFicha, dadosResumo,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
-      adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia,
+      adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
@@ -702,7 +785,7 @@ export default defineComponent({
   flex-shrink: 0;
 }
 
-.acoes .botao--primario:disabled {
+.acoes .botao:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }

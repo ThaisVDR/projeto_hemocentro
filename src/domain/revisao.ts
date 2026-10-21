@@ -97,7 +97,28 @@ export interface ImunohematologiaRevisao {
   anticorposConferencia: Conferencia
 }
 
-export type StatusFicha = 'aguardando' | 'em_revisao' | 'com_pendencia' | 'validada'
+/**
+ * Ciclo da ficha combinado com o backend: o upload já passa pela IA e grava a ficha
+ * como "digitalizada"; só fichas "aprovada" entram no prontuário, dashboard e migração.
+ */
+export type StatusFicha =
+  | 'processando'
+  | 'erro_leitura'
+  | 'digitalizada'
+  | 'em_revisao'
+  | 'com_pendencia'
+  | 'aprovada'
+  | 'recusada'
+
+export const STATUS_FICHA: Record<StatusFicha, { rotulo: string; classe: string }> = {
+  processando: { rotulo: 'Processando', classe: 'selo--info' },
+  erro_leitura: { rotulo: 'Erro na leitura', classe: 'selo--perigo' },
+  digitalizada: { rotulo: 'Aguardando revisão', classe: 'selo--neutro' },
+  em_revisao: { rotulo: 'Em revisão', classe: 'selo--info' },
+  com_pendencia: { rotulo: 'Com pendência', classe: 'selo--alerta' },
+  aprovada: { rotulo: 'Aprovada', classe: 'selo--sucesso' },
+  recusada: { rotulo: 'Recusada', classe: 'selo--perigo' }
+}
 
 /** Ordem das páginas na ficha física. */
 export const DOCUMENTOS_DA_FICHA = [
