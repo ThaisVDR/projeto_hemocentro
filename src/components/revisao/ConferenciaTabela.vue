@@ -1,7 +1,7 @@
 <template>
   <div class="conferencia" :class="`conferencia--${conferencia.estado}`">
     <span>
-      <component :is="conferencia.estado === 'sugerido' ? Sparkles : Check" :size="14" />
+      <component :is="icone" :size="14" />
       {{ texto }}
     </span>
     <button v-if="conferencia.estado === 'sugerido'" type="button" class="botao" @click="$emit('confirmar')">
@@ -12,7 +12,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { Check, Sparkles } from 'lucide-vue-next'
+import { Check, Circle, Sparkles } from 'lucide-vue-next'
 import { Conferencia } from '@/domain/revisao'
 
 export default defineComponent({
@@ -24,12 +24,17 @@ export default defineComponent({
   emits: ['confirmar'],
   setup(props) {
     const texto = computed(() => {
-      if (props.conferencia.estado === 'sugerido') {
-        return `${props.conferencia.rotulo}: sugestão da IA • conferir linha a linha antes de aprovar`
-      }
-      return `${props.conferencia.rotulo}: conferida • original, p. ${props.conferencia.pagina}`
+      const { rotulo, pagina, estado } = props.conferencia
+      if (estado === 'vazio') return `${rotulo}: não preenchida • original, p. ${pagina}`
+      if (estado === 'sugerido') return `${rotulo}: sugestão da IA • conferir linha a linha antes de aprovar`
+      if (estado === 'editado') return `${rotulo}: preenchida na revisão • p. ${pagina}`
+      return `${rotulo}: conferida • original, p. ${pagina}`
     })
-    return { texto, Check, Sparkles }
+    const icone = computed(() => ({
+      vazio: Circle,
+      sugerido: Sparkles
+    } as Record<string, unknown>)[props.conferencia.estado] ?? Check)
+    return { texto, icone }
   }
 })
 </script>

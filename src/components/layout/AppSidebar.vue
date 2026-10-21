@@ -19,21 +19,17 @@
       >
         <component :is="item.icone" :size="16" />
         <span>{{ item.rotulo }}</span>
-        <span v-if="item.contador" class="menu__contador">{{ item.contador }}</span>
       </router-link>
     </nav>
 
     <div class="menu__acervo">
       <p>Acervo em papel</p>
-      <strong>≈ {{ totais.acervoEmPapel }}</strong>
+      <strong>≈ 850</strong>
       <small>pacientes ativos previstos na base do projeto</small>
     </div>
 
     <div class="menu__rodape">
       <a class="menu__item" href="#"><CircleHelp :size="16" /> Guia de conferência</a>
-      <hr />
-      <span class="selo selo--perigo menu__ambiente">Ambiente de demonstração</span>
-      <small>Protótipo visual • sem dados reais</small>
     </div>
   </aside>
 </template>
@@ -50,7 +46,6 @@ import {
   ListChecks,
   Upload
 } from 'lucide-vue-next'
-import { totaisDemonstracao } from '@/mocks/sessao'
 
 export default defineComponent({
   name: 'AppSidebar',
@@ -59,12 +54,12 @@ export default defineComponent({
     const itens = [
       { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid },
       { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload },
-      { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks, contador: totaisDemonstracao.fichasNaFila },
+      { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks },
       { rota: 'revisar', rotulo: 'Revisar ficha', icone: FileCheck },
       { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart },
       { rota: 'auditoria', rotulo: 'Auditoria', icone: History }
     ]
-    return { itens, totais: totaisDemonstracao }
+    return { itens }
   }
 })
 </script>
@@ -144,12 +139,6 @@ export default defineComponent({
   color: var(--cor-primaria);
 }
 
-.menu__contador {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--cor-primaria);
-}
-
 .menu__acervo {
   margin-top: 24px;
   padding: 14px 12px;
@@ -168,32 +157,12 @@ export default defineComponent({
   font-weight: 600;
 }
 
-.menu__acervo small,
-.menu__rodape small {
+.menu__acervo small {
   font-size: 11px;
   color: var(--cor-texto-suave);
 }
 
 .menu__rodape {
   margin-top: auto;
-}
-
-.menu__rodape hr {
-  margin: 12px 0;
-  border: 0;
-  border-top: 1px solid var(--cor-borda);
-}
-
-.menu__ambiente {
-  margin: 0 0 6px 6px;
-}
-
-.menu__ambiente::before {
-  display: none;
-}
-
-.menu__rodape small {
-  display: block;
-  padding-left: 6px;
 }
 </style>

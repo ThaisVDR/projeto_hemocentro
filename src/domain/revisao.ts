@@ -4,13 +4,14 @@
 import { Fenotipo } from './fenotipo'
 
 /**
+ * vazio      – ainda não preenchido
  * conferido  – revisora confirmou que bate com o original
- * editado    – revisora corrigiu o valor sugerido
+ * editado    – preenchido ou corrigido na revisão
  * incerto    – IA indicou leitura duvidosa; bloqueia a aprovação
  * sugerido   – valor da IA ainda não conferido
  * nao_consta – campo vazio no original; não bloqueia
  */
-export type EstadoCampo = 'conferido' | 'editado' | 'incerto' | 'sugerido' | 'nao_consta'
+export type EstadoCampo = 'vazio' | 'conferido' | 'editado' | 'incerto' | 'sugerido' | 'nao_consta'
 
 export interface Conferencia {
   rotulo: string
@@ -98,15 +99,17 @@ export interface ImunohematologiaRevisao {
 
 export type StatusFicha = 'aguardando' | 'em_revisao' | 'com_pendencia' | 'validada'
 
+/** Ordem das páginas na ficha física. */
+export const DOCUMENTOS_DA_FICHA = [
+  'Ficha transfusional',
+  'ID-DiaCell I, II',
+  'ID-DiaPanel',
+  'Pesquisa imuno-hematológica'
+]
+
 export interface FichaEmRevisao {
-  id: string
-  lote: string
-  arquivo: string
-  totalPaginas: number
-  documentosPorPagina: string[]
   status: StatusFicha
-  revisaoIniciada: { por: string; hora: string }
-  origem: string
+  /** Preenchido pelo backend quando houver busca por cadastro com nome, DN e nome da mãe. */
   cadastroSemelhante: { prontuario: string; motivo: string } | null
   identificacao: IdentificacaoRevisao
   transfusoes: TransfusaoRevisao[]
@@ -116,8 +119,99 @@ export interface FichaEmRevisao {
 }
 
 export function editarCampo(campo: CampoRevisavel, valor: string): void {
-  campo.valor = valor.trim() === '' ? null : valor
-  campo.estado = 'editado'
+  const vazio = valor.trim() === ''
+  campo.valor = vazio ? null : valor
+  campo.estado = vazio ? 'vazio' : 'editado'
+}
+
+/** Registra que o campo está em branco no documento original. */
+export function marcarNaoConsta(campo: CampoRevisavel): void {
+  campo.valor = null
+  campo.estado = 'nao_consta'
+}
+
+function campoVazio(rotulo: string, pagina: number): CampoRevisavel {
+  return { rotulo, valor: null, estado: 'vazio', pagina }
+}
+
+function tabelaVazia(rotulo: string, pagina: number): Conferencia {
+  return { rotulo, estado: 'vazio', pagina }
+}
+
+export function criarTransfusaoVazia(): TransfusaoRevisao {
+  return {
+    dataEnvio: null,
+    tipoHemocomponente: null,
+    numeroDoacao: null,
+    grsRhd: null,
+    volMl: null,
+    testesPai: null,
+    provaCruzada: null,
+    destino: null,
+    responsavelLiberacao: null
+  }
+}
+
+function reacoesVazias(celulas: string[]): ReacaoCelula[] {
+  return [...celulas, 'Autocontrole'].map(celula => ({ celula, coombs: null, enzima: null, frio: null }))
+}
+
+function pesquisaBioRadVazia(documento: string, pagina: number, celulas: string[]): PesquisaBioRadRevisao {
+  return {
+    documento,
+    pagina,
+    data: campoVazio('Data', pagina),
+    grupoAntigenos: campoVazio('Grupo sanguíneo + antígenos', pagina),
+    interpretacao: campoVazio('Interpretação', pagina),
+    loteKit: campoVazio('Lote do kit', pagina),
+    reacoes: reacoesVazias(celulas),
+    reacoesConferencia: tabelaVazia(`Reações ${documento}`, pagina)
+  }
+}
+
+/** Ficha em branco, com a mesma estrutura da ficha física de 4 páginas. */
+export function criarFichaVazia(): FichaEmRevisao {
+  return {
+    status: 'em_revisao',
+    cadastroSemelhante: null,
+    identificacao: {
+      nome: campoVazio('Nome do receptor', 1),
+      prontuario: campoVazio('Prontuário', 1),
+      racaCor: campoVazio('Raça/cor', 1),
+      aboRh: campoVazio('ABO/Rh', 1),
+      dataNascimento: campoVazio('Data de nascimento (DN)', 1),
+      nomeMae: campoVazio('Nome da mãe', 1),
+      municipio: campoVazio('Município', 1),
+      diagnostico: campoVazio('Diagnóstico', 1),
+      sexo: campoVazio('Sexo', 4),
+      cartaoSus: campoVazio('Cartão SUS', 4)
+    },
+    transfusoes: [criarTransfusaoVazia()],
+    transfusoesConferencia: tabelaVazia('Tabela de envios', 1),
+    pesquisas: [
+      pesquisaBioRadVazia('ID-DiaCell I, II', 2, ['I', 'II']),
+      pesquisaBioRadVazia('ID-DiaPanel', 3, Array.from({ length: 11 }, (_, i) => String(i + 1)))
+    ],
+    imunohematologia: {
+      grupoSanguineo: campoVazio('Grupo sanguíneo', 4),
+      fatorRh: campoVazio('Fator Rh', 4),
+      dFraco: campoVazio('D fraco', 4),
+      pai: campoVazio('Pesquisa de anticorpos irregulares (PAI)', 4),
+      autocontrole: campoVazio('Autocontrole', 4),
+      tad: campoVazio('Teste da antiglobulina humana (TAD)', 4),
+      dcScreening: campoVazio('Antiglobulina monoespecífico DC-Screening I', 4),
+      observacao: campoVazio('Observação', 4),
+      solicitante: campoVazio('Solicitante', 4),
+      amostra: campoVazio('Amostra', 4),
+      metodologia: campoVazio('Metodologia', 4),
+      dataExame: campoVazio('Data do exame', 4),
+      responsavelTecnico: campoVazio('Responsável técnico', 4),
+      fenotipo: {},
+      fenotipoConferencia: tabelaVazia('Fenotipagem eritrocitária', 4),
+      anticorpos: [],
+      anticorposConferencia: tabelaVazia('Identificação de anticorpos irregulares', 4)
+    }
+  }
 }
 
 export function confirmarConferencia(conferencia: Conferencia): void {
@@ -148,10 +242,12 @@ export interface ResumoConferencia {
   podeAprovar: boolean
 }
 
+const ESTADOS_RESOLVIDOS: EstadoCampo[] = ['conferido', 'editado', 'nao_consta']
+
 export function resumirConferencia(ficha: FichaEmRevisao): ResumoConferencia {
   const itens = listarConferencias(ficha)
   const incertos = itens.filter(i => i.estado === 'incerto')
-  const resolvidos = itens.filter(i => i.estado !== 'incerto' && i.estado !== 'sugerido').length
+  const resolvidos = itens.filter(i => ESTADOS_RESOLVIDOS.includes(i.estado)).length
   const pendentesSugestao = itens.filter(i => i.estado === 'sugerido').length
 
   const bloqueios: string[] = []

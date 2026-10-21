@@ -1,9 +1,9 @@
 <template>
   <section class="revisao">
     <p class="revisao__trilha">
-      <router-link :to="{ name: 'fila' }">Fila de revisão</router-link> / {{ ficha.id }}
+      <router-link :to="{ name: 'fila' }">Fila de revisão</router-link> / {{ arquivo ? arquivo.nome : 'Nova ficha' }}
     </p>
-    <PageHeader :titulo="`Revisar ficha de ${ficha.identificacao.nome.valor ?? 'paciente sem nome'}`" :subtitulo="subtitulo">
+    <PageHeader :titulo="titulo" :subtitulo="subtitulo">
       <span class="selo" :class="statusFicha.classe">{{ statusFicha.rotulo }}</span>
       <router-link :to="{ name: 'fila' }" class="botao"><ArrowLeft :size="16" /> Voltar à fila</router-link>
     </PageHeader>
@@ -23,24 +23,29 @@
 
     <div class="revisao__colunas">
       <div class="revisao__documento">
-        <DocumentoOriginal :original="original" :atual="ficha" :pagina="pagina" @mudar-pagina="pagina = $event" />
+        <DocumentoOriginal
+          :arquivo="arquivo"
+          :pagina="pagina"
+          @selecionar="selecionarArquivo"
+          @mudar-pagina="pagina = $event"
+        />
       </div>
 
       <div class="cartao dados">
         <header class="dados__cabecalho">
           <div>
-            <h2>Dados extraídos e editáveis</h2>
-            <p>Sugestões da IA • ainda não validadas</p>
+            <h2>Dados da ficha</h2>
+            <p>Preencha ou confira cada campo conforme o documento original</p>
           </div>
-          <Sparkles :size="18" class="dados__ia" />
+          <ClipboardList :size="18" class="dados__ia" />
         </header>
 
         <div class="alerta">
           <AlertTriangle :size="16" />
           <span>
-            Confirme a data de nascimento e expanda o nome da mãe somente se o original permitir.
-            Campos de resultado laboratorial (DiaCell, DiaPanel, fenotipagem) devem ser transcritos
-            literalmente. Não complete por suposição.
+            Transcreva exatamente o que está no original e não complete por suposição. Use
+            <Minus :size="12" /> para registrar campos em branco no papel. Resultados laboratoriais
+            (DiaCell, DiaPanel, fenotipagem) devem ser transcritos literalmente: nt, NR e vazio não são negativo.
           </span>
         </div>
 
@@ -93,11 +98,13 @@
                   <td><input v-model="linha.volMl" class="curto" inputmode="numeric" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td>
                     <select v-model="linha.testesPai" @change="marcarEditado(ficha.transfusoesConferencia)">
+                      <option :value="null">—</option>
                       <option v-for="opcao in opcoesResultadoTeste" :key="opcao" :value="opcao">{{ opcao }}</option>
                     </select>
                   </td>
                   <td>
                     <select v-model="linha.provaCruzada" @change="marcarEditado(ficha.transfusoesConferencia)">
+                      <option :value="null">—</option>
                       <option v-for="opcao in opcoesResultadoTeste" :key="opcao" :value="opcao">{{ opcao }}</option>
                     </select>
                   </td>
@@ -222,7 +229,7 @@
         <div>
           <strong>Conferência humana obrigatória</strong>
           <small v-if="conferencia.podeAprovar">
-            {{ conferencia.pendentesSugestao }} sugestões da IA ainda sem confirmação explícita • revise antes de aprovar.
+            {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de aprovar.
           </small>
           <small v-else>{{ conferencia.bloqueios.join(' ') }}</small>
         </div>
@@ -244,24 +251,24 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, reactive, ref } from 'vue'
+import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
-  AlertTriangle, ArrowLeft, Check, ClipboardCheck, Flag, Plus, Sparkles, Trash2, UserCheck, Users
+  AlertTriangle, ArrowLeft, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
 } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import ResumoImunohematologico from '@/components/ResumoImunohematologico.vue'
 import CampoRevisao from '@/components/revisao/CampoRevisao.vue'
 import ConferenciaTabela from '@/components/revisao/ConferenciaTabela.vue'
-import DocumentoOriginal from '@/components/revisao/DocumentoOriginal.vue'
+import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/DocumentoOriginal.vue'
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { RACA_COR } from '@/domain/paciente'
 import { DadosImunohematologicos, lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
 import {
-  CampoRevisavel, Conferencia, confirmarConferencia, editarCampo, resumirConferencia
+  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
+  DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia
 } from '@/domain/revisao'
 import { formatarTipoSanguineo, TIPOS_SANGUINEOS } from '@/domain/tipoSanguineo'
-import { criarFichaDemonstracao } from '@/mocks/fichaRevisao'
 
 interface Mensagem {
   tipo: 'sucesso' | 'info' | 'alerta'
@@ -271,26 +278,50 @@ interface Mensagem {
 export default defineComponent({
   name: 'RevisarFichaView',
   components: {
-    AlertTriangle, ArrowLeft, Check, ClipboardCheck, Flag, Plus, Sparkles, Trash2, UserCheck, Users,
+    AlertTriangle, ArrowLeft, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao
   },
   setup() {
-    const original = criarFichaDemonstracao()
-    const ficha = reactive(criarFichaDemonstracao())
+    const ficha = reactive(criarFichaVazia())
     const ih = ficha.imunohematologia
     const pagina = ref(1)
     const mensagem = ref<Mensagem | null>(null)
+    const arquivo = ref<ArquivoDocumento | null>(null)
 
     const conferencia = computed(() => resumirConferencia(ficha))
     const percentual = computed(() =>
       Math.round((conferencia.value.resolvidos / conferencia.value.total) * 100)
     )
 
-    const subtitulo = computed(() =>
-      `Lote ${ficha.lote} • ${ficha.arquivo} • ${ficha.totalPaginas} páginas: ` +
-      `${ficha.documentosPorPagina.join(', ')} • revisão iniciada por ` +
-      `${ficha.revisaoIniciada.por} às ${ficha.revisaoIniciada.hora}`
+    const titulo = computed(() => {
+      const nome = ficha.identificacao.nome.valor
+      return nome ? `Revisar ficha de ${nome}` : 'Revisar ficha'
+    })
+
+    const subtitulo = computed(() => arquivo.value
+      ? `${arquivo.value.nome} • ficha de ${DOCUMENTOS_DA_FICHA.length} páginas: ${DOCUMENTOS_DA_FICHA.join(', ')}`
+      : 'Selecione o documento digitalizado e preencha os campos conforme o original.'
     )
+
+    function selecionarArquivo(novo: File) {
+      if (arquivo.value) URL.revokeObjectURL(arquivo.value.url)
+      arquivo.value = { nome: novo.name, tipo: novo.type, url: URL.createObjectURL(novo) }
+      pagina.value = 1
+    }
+
+    // Os dados ainda não são gravados: avisa antes de sair da página com a ficha em andamento.
+    function avisarAntesDeSair(evento: BeforeUnloadEvent) {
+      if (conferencia.value.resolvidos > 0 && ficha.status !== 'validada') {
+        evento.preventDefault()
+        evento.returnValue = ''
+      }
+    }
+
+    onMounted(() => window.addEventListener('beforeunload', avisarAntesDeSair))
+    onBeforeUnmount(() => {
+      window.removeEventListener('beforeunload', avisarAntesDeSair)
+      if (arquivo.value) URL.revokeObjectURL(arquivo.value.url)
+    })
 
     const statusFicha = computed(() => ({
       aguardando: { rotulo: 'Aguardando', classe: 'selo--neutro' },
@@ -317,6 +348,7 @@ export default defineComponent({
       return {
         onAtualizar: (valor: string) => editarCampo(campo, valor),
         onConfirmar: () => confirmarConferencia(campo),
+        onNaoConsta: () => marcarNaoConsta(campo),
         onFoco: (numero: number) => { pagina.value = numero }
       }
     }
@@ -336,10 +368,7 @@ export default defineComponent({
     }
 
     function adicionarTransfusao() {
-      ficha.transfusoes.push({
-        dataEnvio: null, tipoHemocomponente: null, numeroDoacao: null, grsRhd: null, volMl: null,
-        testesPai: 'NR', provaCruzada: 'NR', destino: null, responsavelLiberacao: null
-      })
+      ficha.transfusoes.push(criarTransfusaoVazia())
       marcarEditado(ficha.transfusoesConferencia)
     }
 
@@ -358,26 +387,26 @@ export default defineComponent({
       marcarEditado(ih.anticorposConferencia)
     }
 
+    // TODO: enviar ao backend quando existirem as rotas de rascunho, pendência e aprovação.
+    const AVISO_SEM_GRAVACAO = 'Os dados ainda não foram gravados no banco: a gravação depende da rota do backend.'
+
     function aprovar() {
       ficha.status = 'validada'
-      mensagem.value = {
-        tipo: 'sucesso',
-        texto: 'Ficha aprovada (demonstração). Ainda não há envio ao backend: o salvamento será ligado quando a rota de aprovação existir.'
-      }
+      mensagem.value = { tipo: 'sucesso', texto: `Conferência concluída. ${AVISO_SEM_GRAVACAO}` }
     }
 
     function salvarRascunho() {
-      mensagem.value = { tipo: 'info', texto: 'Rascunho salvo nesta sessão (demonstração).' }
+      mensagem.value = { tipo: 'info', texto: `Rascunho mantido nesta tela. ${AVISO_SEM_GRAVACAO}` }
     }
 
     function sinalizarPendencia() {
       ficha.status = 'com_pendencia'
-      mensagem.value = { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila (demonstração).' }
+      mensagem.value = { tipo: 'alerta', texto: `Ficha marcada com pendência. ${AVISO_SEM_GRAVACAO}` }
     }
 
     return {
-      original, ficha, ih, pagina, mensagem, conferencia, percentual, subtitulo, statusFicha, dadosResumo,
-      eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
+      ficha, ih, pagina, mensagem, arquivo, conferencia, percentual, titulo, subtitulo, statusFicha, dadosResumo,
+      selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,

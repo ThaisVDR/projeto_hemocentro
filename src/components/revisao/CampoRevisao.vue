@@ -30,11 +30,20 @@
       <button
         v-if="podeConfirmar"
         type="button"
-        class="campo__confirmar"
+        class="campo__botao campo__botao--confirmar"
         title="Confirmar conforme o original"
         @click="$emit('confirmar')"
       >
         <Check :size="14" />
+      </button>
+      <button
+        v-if="campo.estado === 'vazio'"
+        type="button"
+        class="campo__botao"
+        title="Marcar como não consta no original"
+        @click="$emit('nao-consta')"
+      >
+        <Minus :size="14" />
       </button>
     </div>
 
@@ -44,7 +53,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { AlertCircle, Check, Minus, Pencil, Sparkles } from 'lucide-vue-next'
+import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles } from 'lucide-vue-next'
 import { CampoRevisavel } from '@/domain/revisao'
 
 export interface OpcaoCampo {
@@ -56,17 +65,18 @@ let contador = 0
 
 export default defineComponent({
   name: 'CampoRevisao',
-  components: { Check },
+  components: { Check, Minus },
   props: {
     campo: { type: Object as PropType<CampoRevisavel>, required: true },
     tipo: { type: String, default: 'text' },
     opcoes: { type: Array as PropType<OpcaoCampo[]>, default: undefined }
   },
-  emits: ['atualizar', 'confirmar', 'foco'],
+  emits: ['atualizar', 'confirmar', 'nao-consta', 'foco'],
   setup(props, { emit }) {
     const id = `campo-${++contador}`
 
     const icone = computed(() => ({
+      vazio: Circle,
       conferido: Check,
       editado: Pencil,
       incerto: AlertCircle,
@@ -77,8 +87,9 @@ export default defineComponent({
     const nota = computed(() => {
       const pagina = `p. ${props.campo.pagina}`
       switch (props.campo.estado) {
+        case 'vazio': return `Não preenchido • original, ${pagina}`
         case 'conferido': return `Conferido • original, ${pagina}`
-        case 'editado': return `Corrigido na revisão • ${pagina}`
+        case 'editado': return `Preenchido na revisão • ${pagina}`
         case 'incerto': return `${props.campo.nota ?? 'Leitura incerta'} • ${pagina}`
         case 'nao_consta': return `Não consta no original • não bloqueia`
         default: return `Sugestão da IA • conferir antes de aprovar`
@@ -157,17 +168,25 @@ export default defineComponent({
   color: var(--cor-texto-suave);
 }
 
-.campo__confirmar {
+.campo__botao {
   display: grid;
   place-items: center;
   width: 38px;
   border: 1px solid var(--cor-borda);
   border-radius: var(--raio);
   background: var(--cor-superficie);
+  color: var(--cor-texto-suave);
+}
+
+.campo__botao:hover {
+  background: var(--cor-fundo);
+}
+
+.campo__botao--confirmar {
   color: var(--cor-sucesso);
 }
 
-.campo__confirmar:hover {
+.campo__botao--confirmar:hover {
   background: var(--cor-sucesso-suave);
 }
 
