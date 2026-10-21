@@ -80,6 +80,7 @@ h3 {
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .botao--primario {

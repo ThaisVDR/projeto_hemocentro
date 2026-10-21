@@ -22,6 +22,14 @@ export const SISTEMAS_SANGUINEOS: SistemaSanguineo[] = [
   { nome: 'Diego', antigenos: ['Dia'] }
 ]
 
+/** Colunas da fenotipagem eritrocitária na ficha "Pesquisa Imuno Hematológica", na ordem do papel. */
+export const ANTIGENOS_FICHA_FENOTIPAGEM = [
+  'C', 'c', 'E', 'e', 'K', 'k', 'Kpa', 'Kpb', 'Jka', 'Jkb', 'M',
+  'N', 'S', 's', 'Fya', 'Fyb', 'P1', 'Lea', 'Leb', 'Lua', 'Lub'
+]
+
+export const REACOES: Reacao[] = ['0', 'w', '1+', '2+', '3+', '4+', 'nt', 'NR']
+
 /** Reação registrada por antígeno. Antígeno ausente = não informado. */
 export type Fenotipo = Partial<Record<string, Reacao | null>>
 
@@ -71,6 +79,13 @@ export function formatarFenotipo(fenotipo: Fenotipo, sistemas?: string[]): strin
 export function antigenoDoAnticorpo(anticorpo: string): string | null {
   const encontrado = anticorpo.trim().match(/^anti-?\s*(\S+)$/i)
   return encontrado ? encontrado[1] : null
+}
+
+/** Encontra anticorpos citados em texto livre. "Anti-c • histórico simulado" → ["Anti-c"]. */
+export function extrairAnticorpos(texto?: string | null): string[] {
+  if (!texto) return []
+  const encontrados = texto.match(/\banti-\s?[A-Za-z0-9]+/gi) ?? []
+  return encontrados.map(a => 'Anti-' + a.replace(/^anti-\s?/i, ''))
 }
 
 /** Antígenos que o sangue recebido precisa ter negativos, a partir dos anticorpos identificados. */
