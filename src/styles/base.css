@@ -1,0 +1,118 @@
+:root {
+  --cor-primaria: #8e1b2c;
+  --cor-primaria-escura: #73131f;
+  --cor-primaria-suave: #f8e8eb;
+  --cor-fundo: #f4f5f7;
+  --cor-superficie: #ffffff;
+  --cor-borda: #e4e6ea;
+  --cor-texto: #1f2328;
+  --cor-texto-suave: #5f6670;
+  --cor-texto-fraco: #8a919b;
+
+  --cor-sucesso: #1f7a4d;
+  --cor-sucesso-suave: #e6f4ec;
+  --cor-alerta: #9a6200;
+  --cor-alerta-suave: #fdf3dc;
+  --cor-info: #2f5ea8;
+  --cor-info-suave: #e8f0fb;
+  --cor-neutro-suave: #eef0f3;
+
+  --raio: 8px;
+  --raio-grande: 12px;
+  --sombra: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --largura-menu: 216px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 500;
+}
+
+.cartao {
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  box-shadow: var(--sombra);
+  padding: 20px;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--raio);
+  border: 1px solid var(--cor-borda);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-weight: 600;
+}
+
+.botao--primario {
+  background: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+  color: #fff;
+}
+
+.botao--primario:hover {
+  background: var(--cor-primaria-escura);
+}
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selo::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.selo--sucesso { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
+.selo--alerta { background: var(--cor-alerta-suave); color: var(--cor-alerta); }
+.selo--info { background: var(--cor-info-suave); color: var(--cor-info); }
+.selo--neutro { background: var(--cor-neutro-suave); color: var(--cor-texto-suave); }
+.selo--perigo { background: var(--cor-primaria-suave); color: var(--cor-primaria); }
