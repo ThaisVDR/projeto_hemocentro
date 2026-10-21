@@ -270,7 +270,7 @@ import { RACA_COR } from '@/domain/paciente'
 import { DadosImunohematologicos, lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
-  DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA
 } from '@/domain/revisao'
 import { formatarTipoSanguineo, TIPOS_SANGUINEOS } from '@/domain/tipoSanguineo'
 import {
@@ -390,6 +390,7 @@ export default defineComponent({
         onAtualizar: (valor: string) => editarCampo(campo, valor),
         onConfirmar: () => confirmarConferencia(campo),
         onNaoConsta: () => marcarNaoConsta(campo),
+        onDesfazerNaoConsta: () => desfazerNaoConsta(campo),
         onFoco: (numero: number) => { pagina.value = numero }
       }
     }

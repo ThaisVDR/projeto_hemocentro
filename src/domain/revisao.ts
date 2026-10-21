@@ -151,6 +151,11 @@ export function marcarNaoConsta(campo: CampoRevisavel): void {
   campo.estado = 'nao_consta'
 }
 
+/** Desfaz o "não consta": o campo volta a ficar pendente de preenchimento. */
+export function desfazerNaoConsta(campo: CampoRevisavel): void {
+  if (campo.estado === 'nao_consta') campo.estado = 'vazio'
+}
+
 function campoVazio(rotulo: string, pagina: number): CampoRevisavel {
   return { rotulo, valor: null, estado: 'vazio', pagina }
 }

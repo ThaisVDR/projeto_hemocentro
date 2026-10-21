@@ -45,6 +45,15 @@
       >
         <Minus :size="14" />
       </button>
+      <button
+        v-if="campo.estado === 'nao_consta'"
+        type="button"
+        class="campo__botao"
+        title="Desfazer “não consta no original”"
+        @click="$emit('desfazer-nao-consta')"
+      >
+        <Undo2 :size="14" />
+      </button>
     </div>
 
     <p class="campo__nota">{{ nota }}</p>
@@ -53,7 +62,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles } from 'lucide-vue-next'
+import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles, Undo2 } from 'lucide-vue-next'
 import { CampoRevisavel } from '@/domain/revisao'
 
 export interface OpcaoCampo {
@@ -65,13 +74,13 @@ let contador = 0
 
 export default defineComponent({
   name: 'CampoRevisao',
-  components: { Check, Minus },
+  components: { Check, Minus, Undo2 },
   props: {
     campo: { type: Object as PropType<CampoRevisavel>, required: true },
     tipo: { type: String, default: 'text' },
     opcoes: { type: Array as PropType<OpcaoCampo[]>, default: undefined }
   },
-  emits: ['atualizar', 'confirmar', 'nao-consta', 'foco'],
+  emits: ['atualizar', 'confirmar', 'nao-consta', 'desfazer-nao-consta', 'foco'],
   setup(props, { emit }) {
     const id = `campo-${++contador}`
 
