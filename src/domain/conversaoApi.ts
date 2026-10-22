@@ -1,4 +1,3 @@
-// Conversão entre o formato do backend (FichaExtraida) e a ficha usada na tela de revisão.
 import { FichaDetalheApi } from '@/services/api'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { RACA_COR } from './paciente'
@@ -43,7 +42,6 @@ const CAMPOS_PACIENTE: Record<string, keyof IdentificacaoRevisao> = {
   nomeMae: 'nomeMae'
 }
 
-/** Monta a ficha da tela a partir do que a IA leu. Os valores entram como "sugestão da IA". */
 export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   const ficha = criarFichaVazia()
   ficha.status = detalhe.status
@@ -135,7 +133,7 @@ export function fichaParaEnvio(ficha: FichaEmRevisao) {
       .map(t => {
         const [cidadeDestino, ufDestino] = (t.destino ?? '').split('/').map(s => s.trim())
         return {
-          dataEnvio: t.dataEnvio,
+          dataEnvio: t.dataEnvio || null,
           tipoHemocomponente: t.tipoHemocomponente,
           numeroDoacao: t.numeroDoacao,
           grsRhd: t.grsRhd,
@@ -169,7 +167,9 @@ export function fichaParaEnvio(ficha: FichaEmRevisao) {
       dataExame: valor(ih.dataExame),
       responsavelTecnico: valor(ih.responsavelTecnico),
       fenotipo: ih.fenotipo as Fenotipo,
-      anticorpos: ih.anticorpos.filter(a => a.especificidade)
+      anticorpos: ih.anticorpos
+        .filter(a => a.especificidade)
+        .map(a => ({ ...a, data: a.data || null }))
     }
   }
 }

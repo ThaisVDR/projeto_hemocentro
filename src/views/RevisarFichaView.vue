@@ -92,7 +92,7 @@
               </thead>
               <tbody>
                 <tr v-for="(linha, indice) in ficha.transfusoes" :key="indice">
-                  <td><input v-model="linha.dataEnvio" type="date" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td><CampoData v-model="linha.dataEnvio" @update:model-value="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.tipoHemocomponente" class="curto" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.numeroDoacao" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.grsRhd" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
@@ -193,7 +193,7 @@
               <thead><tr><th>Data</th><th>Método</th><th>Especificidade</th><th>Classe</th><th /></tr></thead>
               <tbody>
                 <tr v-for="(anticorpo, indice) in ih.anticorpos" :key="indice">
-                  <td><input v-model="anticorpo.data" type="date" @input="marcarEditado(ih.anticorposConferencia)" /></td>
+                  <td><CampoData v-model="anticorpo.data" @update:model-value="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.classe" @input="marcarEditado(ih.anticorposConferencia)" /></td>
@@ -276,6 +276,7 @@ import { formatarTipoSanguineo, TIPOS_SANGUINEOS } from '@/domain/tipoSanguineo'
 import {
   aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoFicha
 } from '@/services/api'
+import CampoData from '@/components/CampoData.vue'
 
 interface Mensagem {
   tipo: 'sucesso' | 'info' | 'alerta'
@@ -292,7 +293,7 @@ export default defineComponent({
   name: 'RevisarFichaView',
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
-    PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao
+    PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData
   },
   setup() {
     const rota = useRoute()
