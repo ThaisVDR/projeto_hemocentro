@@ -18,6 +18,13 @@
           {{ opcao.rotulo }}
         </option>
       </select>
+      <CampoData
+        v-else-if="tipo === 'date'"
+        :id="id"
+        :model-value="campo.valor ?? ''"
+        @update:model-value="$emit('atualizar', $event)"
+        @focus="$emit('foco', campo.pagina)"
+      />
       <input
         v-else
         :id="id"
@@ -64,6 +71,7 @@
 import { computed, defineComponent, PropType } from 'vue'
 import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles, Undo2 } from 'lucide-vue-next'
 import { CampoRevisavel } from '@/domain/revisao'
+import CampoData from '@/components/CampoData.vue'
 
 export interface OpcaoCampo {
   valor: string
@@ -74,7 +82,7 @@ let contador = 0
 
 export default defineComponent({
   name: 'CampoRevisao',
-  components: { Check, Minus, Undo2 },
+  components: { Check, Minus, Undo2, CampoData },
   props: {
     campo: { type: Object as PropType<CampoRevisavel>, required: true },
     tipo: { type: String, default: 'text' },
