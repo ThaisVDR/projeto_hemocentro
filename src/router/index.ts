@@ -1,7 +1,20 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import AuthLayout from '@/layouts/AuthLayout.vue'
+import { estaAutenticado } from '@/services/sessao'
+const EXIGIR_LOGIN = process.env.VUE_APP_EXIGIR_LOGIN === 'true'
 
 const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    component: AuthLayout,
+    meta: { publica: true },
+    children: [
+      { path: 'login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },
+      { path: 'cadastro', name: 'cadastro', component: () => import('@/views/auth/CadastroView.vue') },
+      { path: 'esqueci-senha', name: 'esqueci-senha', component: () => import('@/views/auth/EsqueciSenhaView.vue') }
+    ]
+  },
   {
     path: '/',
     component: AppLayout,
@@ -51,10 +64,23 @@ const routes: RouteRecordRaw[] = [
       }
     ]
   },
+
   { path: '/:caminho(.*)*', redirect: { name: 'dashboard' } }
 ]
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
 })
+
+router.beforeEach((destino) => {
+  if (!EXIGIR_LOGIN) return
+
+  const publica = destino.matched.some((r) => r.meta.publica)
+  if (!publica && !estaAutenticado.value) {
+    return { name: 'login', query: { redirect: destino.fullPath } }
+  }
+  if (publica && estaAutenticado.value) return { name: 'dashboard' }
+})
+
+export default router
