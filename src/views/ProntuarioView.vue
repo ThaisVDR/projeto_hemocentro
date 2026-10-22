@@ -21,9 +21,18 @@
         <input v-model="nomeMae" type="text" />
       </label>
 
-    <button type="submit" class="botao botao--primario" :disabled="!nome.trim()">Buscar paciente</button>
+    <button type="submit" class="botao botao--primario" :disabled="!nome.trim() || carregando">Buscar paciente</button>
 
     </form>
+
+    <p v-if="carregando" class="estado">Buscando pacientes…</p>
+    <p v-else-if="erro" class="estado estado--erro">{{ erro }}</p>
+    <p v-else-if="pacientes && pacientes.length === 0" class="estado">
+      Nenhum paciente encontrado. Confira a grafia do nome ou busque também pelo nome da mãe.
+    </p>
+    <p v-else-if="pacientes" class="estado">
+      {{ pacientes.length }} paciente(s) encontrado(s).
+    </p>
     
   </section>
 </template>
@@ -33,6 +42,7 @@
 import PageHeader from '@/components/PageHeader.vue'
 import { defineComponent, ref } from 'vue'
 import CampoData from '@/components/CampoData.vue'
+import { buscarPacientes, PacienteResumoApi } from '@/services/api'
 
 export default defineComponent({
   name: 'ProntuarioView',
@@ -41,14 +51,29 @@ export default defineComponent({
     const nome = ref('');
     const dataNascimento = ref('');
     const nomeMae = ref('');
+    const carregando = ref(false)
+    const erro = ref<string | null>(null)
+    const pacientes = ref<PacienteResumoApi[] | null>(null)
 
+    async function buscar() {
+      carregando.value = true
+      erro.value = null
 
-    function buscar() {
-      console.log('Buscar', nome.value, dataNascimento.value, nomeMae.value);
-      
+      try {
+        pacientes.value = await buscarPacientes({
+          nome: nome.value.trim(),
+          dataNascimento: dataNascimento.value,
+          nomeMae: nomeMae.value.trim()
+        })
+      } catch (e) {
+        erro.value = (e as Error).message
+        pacientes.value = null
+      } finally {
+        carregando.value = false
+      }
     }
 
-    return { nome, dataNascimento, nomeMae, buscar };
+    return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar };
   } 
 });
 
@@ -77,4 +102,6 @@ display: grid;
   border-radius: var(--raio);
   font: inherit;
 }
+
+
 </style>
