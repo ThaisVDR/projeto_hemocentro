@@ -5,6 +5,7 @@ import { estaAutenticado } from '@/services/sessao'
 const EXIGIR_LOGIN = process.env.VUE_APP_EXIGIR_LOGIN === 'true'
 
 const routes: RouteRecordRaw[] = [
+  { path: '/', redirect: { name: 'dashboard' } },
   {
     path: '/',
     component: AuthLayout,
@@ -19,7 +20,6 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: AppLayout,
     children: [
-      { path: '', redirect: { name: 'dashboard' } },
       {
         path: 'dashboard',
         name: 'dashboard',
@@ -64,7 +64,6 @@ const routes: RouteRecordRaw[] = [
       }
     ]
   },
-
   { path: '/:caminho(.*)*', redirect: { name: 'dashboard' } }
 ]
 
