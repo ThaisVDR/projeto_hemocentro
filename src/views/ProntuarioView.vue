@@ -21,9 +21,44 @@
         <input v-model="nomeMae" type="text" />
       </label>
 
-    <button type="submit" class="botao botao--primario" :disabled="!nome.trim()">Buscar paciente</button>
+    <button type="submit" class="botao botao--primario" :disabled="!nome.trim() || carregando">Buscar paciente</button>
 
     </form>
+
+    <p v-if="carregando" class="estado">Buscando pacientes…</p>
+    <p v-else-if="erro" class="estado estado--erro">{{ erro }}</p>
+    <p v-else-if="pacientes && pacientes.length === 0" class="estado">
+      Nenhum paciente encontrado. Confira a grafia do nome ou busque também pelo nome da mãe.
+    </p>
+    <div v-else-if="pacientes" class="cartao resultados">
+      <p class="resultados__titulo">{{ pacientes.length }} paciente(s) encontrado(s)</p>
+
+      <ul class="resultados__lista">
+        <li v-for="paciente in pacientes" :key="paciente.id">
+          <router-link
+            :to="{ name: 'prontuarios', params: { pacienteId: paciente.id } }"
+            class="resultado"
+          >
+            <span class="resultado__avatar">{{ iniciais(paciente.nome) }}</span>
+
+            <span class="resultado__dados">
+              <strong>{{ paciente.nome }}</strong>
+              <small>
+                Nascimento: {{ formatarData(paciente.dataNascimento) || 'não informado' }}
+                • Mãe: {{ paciente.nomeMae || 'não informada' }}
+              </small>
+            </span>
+
+            <span class="resultado__destaques">
+              <span class="selo selo--perigo">{{ textoRacaCor(paciente.racaCor) }}</span>
+              <span class="selo selo--neutro">{{ paciente.aboRh || 'ABO/Rh não informado' }}</span>
+            </span>
+
+            <ChevronRight :size="18" class="resultado__seta" />
+          </router-link>
+        </li>
+      </ul>
+    </div>
     
   </section>
 </template>
@@ -33,22 +68,59 @@
 import PageHeader from '@/components/PageHeader.vue'
 import { defineComponent, ref } from 'vue'
 import CampoData from '@/components/CampoData.vue'
+import { buscarPacientes, PacienteResumoApi } from '@/services/api'
+import { ChevronRight } from 'lucide-vue-next'
+import { formatarRacaCor } from '@/domain/paciente'
+import { lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
+import { formatarData } from '@/utils/formatacao'
 
 export default defineComponent({
   name: 'ProntuarioView',
-  components: { PageHeader, CampoData },
+  components: { PageHeader, CampoData, ChevronRight },
   setup() {
     const nome = ref('');
     const dataNascimento = ref('');
     const nomeMae = ref('');
+    const carregando = ref(false)
+    const erro = ref<string | null>(null)
+    const pacientes = ref<PacienteResumoApi[] | null>(null)
 
+    async function buscar() {
+      carregando.value = true
+      erro.value = null
 
-    function buscar() {
-      console.log('Buscar', nome.value, dataNascimento.value, nomeMae.value);
-      
+      try {
+        pacientes.value = await buscarPacientes({
+          nome: nome.value.trim(),
+          dataNascimento: dataNascimento.value,
+          nomeMae: nomeMae.value.trim()
+        })
+      } catch (e) {
+        erro.value = (e as Error).message
+        pacientes.value = null
+      } finally {
+        carregando.value = false
+      }
     }
 
-    return { nome, dataNascimento, nomeMae, buscar };
+      function textoRacaCor(valor: string | null): string {
+      const codigo = lerCodigoRacaCor(valor)
+      if (codigo) return formatarRacaCor(codigo)
+      return valor || 'Não informada'
+      }
+
+      function iniciais(nomeCompleto: string): string {
+      const palavras = nomeCompleto.trim().split(' ').filter(palavra => palavra !== '')
+      const primeira = palavras[0]
+      if (palavras.length === 1) {
+        return primeira[0].toUpperCase()
+      }
+
+      const ultima = palavras[palavras.length - 1]
+      return (primeira[0] + ultima[0]).toUpperCase()
+    }
+
+    return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData};
   } 
 });
 
@@ -77,4 +149,71 @@ display: grid;
   border-radius: var(--raio);
   font: inherit;
 }
+
+.resultados {
+  margin-top: 16px;
+  padding: 8px 0;
+}
+
+.resultados__titulo {
+  margin: 8px 20px 4px;
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+}
+
+.resultados__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resultado {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--cor-borda);
+}
+
+.resultado:hover {
+  background: var(--cor-fundo);
+}
+
+.resultado__avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--cor-primaria-suave);
+  color: var(--cor-primaria);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resultado__dados {
+  flex: 1;
+  min-width: 0;
+}
+
+.resultado__dados strong {
+  display: block;
+  font-weight: 600;
+}
+
+.resultado__dados small {
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+}
+
+.resultado__destaques {
+  display: flex;
+  gap: 6px;
+}
+
+.resultado__seta {
+  color: var(--cor-texto-fraco);
+}
+
 </style>

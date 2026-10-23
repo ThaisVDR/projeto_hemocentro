@@ -170,3 +170,30 @@ export async function solicitarRedefinicaoSenha(email: string): Promise<void> {
   if (AUTH_MOCK) return esperar()
   return enviarJson<void>('/auth/esqueci-senha', 'POST', { email })
 }
+
+// ---------- Pacientes ----------
+
+export interface PacienteResumoApi {
+  id: string
+  nome: string
+  dataNascimento: string | null
+  nomeMae: string | null
+  prontuario: number | null
+  racaCor: string | null
+  aboRh: string | null
+
+}
+
+export interface FiltrosPaciente {
+  nome: string
+  dataNascimento?: string
+  nomeMae?: string
+}
+
+export function buscarPacientes(filtros: FiltrosPaciente): Promise<PacienteResumoApi[]> {
+  const parametros = new URLSearchParams()
+  parametros.set('nome', filtros.nome)
+  if (filtros.dataNascimento) parametros.set('dataNascimento', filtros.dataNascimento)
+  if (filtros.nomeMae) parametros.set('nomeMae', filtros.nomeMae)
+  return requisitar<PacienteResumoApi[]>(`/pacientes?${parametros.toString()}`)
+}
