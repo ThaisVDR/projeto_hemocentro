@@ -97,60 +97,43 @@ export default defineComponent({
     const carregandoPaciente = ref(false)
     const erroPaciente = ref<string | null>(null)
 
-async function buscar() {
-  carregando.value = true
-  erro.value = null
+    async function buscar() {
+      carregando.value = true
+      erro.value = null
 
-  try {
-    pacientes.value = await buscarPacientes({
-      nome: nome.value.trim(),
-      dataNascimento: dataNascimento.value,
-      nomeMae: nomeMae.value.trim()
-    })
-  } catch (e) {
-    erro.value = (e as Error).message
-    pacientes.value = null
-  } finally {
-    carregando.value = false
-  }
-}
+      try {
+        pacientes.value = await buscarPacientes({
+          nome: nome.value.trim(),
+          dataNascimento: dataNascimento.value,
+          nomeMae: nomeMae.value.trim()
+        })
+      } catch (e) {
+        erro.value = (e as Error).message
+        pacientes.value = null
+      } finally {
+        carregando.value = false
+      }
+    }
 
-async function carregarPaciente(id: string | null) {
-  paciente.value = null
-  erroPaciente.value = null
-  if (!id) return
+    async function carregarPaciente(id: string | null) {
+      paciente.value = null
+      erroPaciente.value = null
+      if (!id) return
 
-  carregandoPaciente.value = true
-  try {
-    paciente.value = await buscarPaciente(id)
-  } catch (e) {
-    erroPaciente.value = (e as Error).message
-  } finally {
-    carregandoPaciente.value = false
-  }
-}
+      carregandoPaciente.value = true
+      try {
+        paciente.value = await buscarPaciente(id)
+      } catch (e) {
+        erroPaciente.value = (e as Error).message
+      } finally {
+        carregandoPaciente.value = false
+      }
+    }
 
-watch(pacienteId, carregarPaciente, { immediate: true })
+    watch(pacienteId, carregarPaciente, { immediate: true })
 
 
-function textoRacaCor(valor: string | null): string {
-  const codigo = lerCodigoRacaCor(valor)
-  if (codigo) return formatarRacaCor(codigo)
-  return valor || 'Não informada'
-}
-
-function iniciais(nomeCompleto: string): string {
-  const palavras = nomeCompleto.trim().split(' ').filter(palavra => palavra !== '')
-  const primeira = palavras[0]
-  if (palavras.length === 1) {
-    return primeira[0].toUpperCase()
-  }
-
-  const ultima = palavras[palavras.length - 1]
-  return (primeira[0] + ultima[0]).toUpperCase()
-}
-
-return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
+    return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
   }
 });
 
