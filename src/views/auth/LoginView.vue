@@ -24,9 +24,9 @@
       @blur="validarCampo('senha')"
     />
 
-    <button class="botao botao--primario form__botao" :disabled="enviando">
-      <router-link to="{ name: 'dashboard' }">Entrar</router-link>
-    </button>
+ <button class="botao botao--primario form__botao" :disabled="enviando">
+  {{ enviando ? 'Entrando…' : 'Entrar' }}
+</button>
 
     
     <nav class="form__links">
@@ -52,6 +52,8 @@ export default defineComponent({
   setup() {
     const rota = useRoute()
     const roteador = useRouter()
+    const destino = typeof rota.query.redirect === 'string' ? rota.query.redirect : ''
+
 
     const { valores, erros, enviando, erroGeral, validarCampo, enviar } = useFormulario(
       { email: '', senha: '' },
@@ -65,7 +67,7 @@ export default defineComponent({
       const ok = await enviar(async (dados) => {
         iniciarSessao(await entrar(dados))
       })
-      if (ok) roteador.push((rota.query.redirect as string) || { name: 'dashboard' })
+      if (ok) roteador.push(destino.startsWith('/') && !destino.startsWith('//') ? destino : { name: 'dashboard' })
     }
 
     return { valores, erros, enviando, erroGeral, validarCampo, aoEnviar }

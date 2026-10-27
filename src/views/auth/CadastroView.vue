@@ -1,12 +1,12 @@
 <template>
   <div v-if="enviado" class="form">
-    <header class="form__cabecalho">
-      <h1>Solicitação enviada</h1>
-    </header>
-    <p class="form__sucesso" role="status">
-      Você receberá um e-mail em <strong>{{ valores.email }}</strong> quando o gestor aprovar o acesso.
-    </p>
-    <router-link class="form__link" :to="{ name: 'login' }">Voltar para o login</router-link>
+     <header class="form__cabecalho">
+       <h1>Conta criada</h1>
+     </header>
+     <p class="form__sucesso" role="status">
+      Cadastro de <strong>{{ valores.email }}</strong> concluído. Você já pode entrar.
+     </p>
+    <router-link class="form__link" :to="{ name: 'login' }">Ir para o login</router-link>
   </div>
 
   <form v-else class="form" novalidate @submit.prevent="aoEnviar">
