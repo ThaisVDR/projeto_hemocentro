@@ -1,3 +1,6 @@
+import { formatarRacaCor } from '@/domain/paciente'
+import { lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
+
 export function formatarData(iso?: string | null): string {
   if (!iso) return ''
   const encontrado = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -16,4 +19,35 @@ export function dataBrasileiraParaIso(texto: string): string {
     data.getDate() === Number(dia)
 
   return existe ? `${ano}-${mes}-${dia}` : ''
+}
+
+export function textoRacaCor(valor: string | null): string {
+  const codigo = lerCodigoRacaCor(valor)
+  if (codigo) return formatarRacaCor(codigo)
+  return valor || 'Não informada'
+}
+
+export function iniciais(nomeCompleto: string): string {
+  const palavras = nomeCompleto.trim().split(' ').filter(palavra => palavra !== '')
+  const primeira = palavras[0]
+
+  if (palavras.length === 1) {
+    return primeira[0].toUpperCase()
+  }
+
+  const ultima = palavras[palavras.length - 1]
+  return (primeira[0] + ultima[0]).toUpperCase()
+}
+
+export function calcularIdade(iso?: string | null, hoje = new Date()): number | null {
+  if (!iso) return null
+  const [ano, mes, dia] = iso.split('-').map(Number)
+  if (!ano || !mes || !dia) return null
+
+  let idade = hoje.getFullYear() - ano
+  const mesAtual = hoje.getMonth() + 1
+  const aindaNaoFezAniversario = mesAtual < mes || (mesAtual === mes && hoje.getDate() < dia)
+  if (aindaNaoFezAniversario) idade = idade - 1
+
+  return idade
 }

@@ -65,10 +65,7 @@
     <template v-else>
       <p v-if="carregandoPaciente" class="estado">Carregando prontuário…</p>
       <p v-else-if="erroPaciente" class="estado estado--erro">{{ erroPaciente }}</p>
-      <div v-else-if="paciente" class="cartao">
-        <h2>{{ paciente.nome }}</h2>
-        <p>Blablabla</p>
-      </div>
+      <CabecalhoPaciente v-else-if="paciente" :paciente="paciente" />
     </template>
   </section>
 </template>
@@ -80,14 +77,13 @@ import { computed, defineComponent, ref, watch } from 'vue'
 import CampoData from '@/components/CampoData.vue'
 import { buscarPaciente, buscarPacientes, PacienteDetalheApi, PacienteResumoApi } from '@/services/api'
 import { ChevronRight, ArrowLeft } from 'lucide-vue-next'
-import { formatarRacaCor } from '@/domain/paciente'
-import { lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
-import { formatarData } from '@/utils/formatacao'
+import { formatarData, textoRacaCor, iniciais } from '@/utils/formatacao'
 import { useRoute } from 'vue-router'
+import CabecalhoPaciente from '@/components/prontuario/CabecalhoPaciente.vue'
 
 export default defineComponent({
   name: 'ProntuarioView',
-  components: { PageHeader, CampoData, ChevronRight, ArrowLeft },
+  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente },
   setup() {
     const nome = ref('');
     const dataNascimento = ref('');
