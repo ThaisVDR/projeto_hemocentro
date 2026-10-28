@@ -65,7 +65,10 @@
     <template v-else>
       <p v-if="carregandoPaciente" class="estado">Carregando prontuário…</p>
       <p v-else-if="erroPaciente" class="estado estado--erro">{{ erroPaciente }}</p>
-      <CabecalhoPaciente v-else-if="paciente" :paciente="paciente" />
+      <template v-else-if="paciente">
+        <CabecalhoPaciente :paciente="paciente" />
+        <PerfilTransfusional :paciente="paciente" />
+      </template>
     </template>
   </section>
 </template>
@@ -80,10 +83,11 @@ import { ChevronRight, ArrowLeft } from 'lucide-vue-next'
 import { formatarData, textoRacaCor, iniciais } from '@/utils/formatacao'
 import { useRoute } from 'vue-router'
 import CabecalhoPaciente from '@/components/prontuario/CabecalhoPaciente.vue'
+import PerfilTransfusional from '@/components/prontuario/PerfilTransfusional.vue'
 
 export default defineComponent({
   name: 'ProntuarioView',
-  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente },
+  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente, PerfilTransfusional },
   setup() {
     const nome = ref('');
     const dataNascimento = ref('');
@@ -124,17 +128,17 @@ export default defineComponent({
       try {
         paciente.value = await buscarPaciente(id)
       } catch (e) {
-        erroPaciente.value = (e as Error).message
-      } finally {
-        carregandoPaciente.value = false
-      }
+      erroPaciente.value = (e as Error).message
+    } finally {
+      carregandoPaciente.value = false
     }
+  }
 
     watch(pacienteId, carregarPaciente, { immediate: true })
 
 
     return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
-  }
+}
 });
 
 </script>
