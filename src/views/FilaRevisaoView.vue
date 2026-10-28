@@ -194,7 +194,6 @@ export default defineComponent({
   color: var(--cor-texto-suave);
 }
 
-
 .filtro {
   display: flex;
   justify-content: space-between;
