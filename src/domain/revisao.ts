@@ -97,30 +97,30 @@ export interface ImunohematologiaRevisao {
   anticorposConferencia: Conferencia
 }
 
-/**
- * Ciclo da ficha combinado com o backend: o upload já passa pela IA e grava a ficha
- * como "digitalizada"; só fichas "aprovada" entram no prontuário, dashboard e migração.
- */
+// Mesmos nomes do enum StatusFicha do backend (prisma/schema.prisma).
+
 export type StatusFicha =
-  | 'processando'
-  | 'erro_leitura'
-  | 'digitalizada'
-  | 'em_revisao'
-  | 'com_pendencia'
-  | 'aprovada'
-  | 'recusada'
+  | 'ENVIADA'
+  | 'LENDO'
+  | 'FALHA_LEITURA'
+  | 'AGUARDANDO_REVISAO'
+  | 'EM_REVISAO'
+  | 'COM_PENDENCIA'
+  | 'VALIDADA'
+  | 'RECUSADA'
 
 export const STATUS_FICHA: Record<StatusFicha, { rotulo: string; classe: string }> = {
-  processando: { rotulo: 'Processando', classe: 'selo--info' },
-  erro_leitura: { rotulo: 'Erro na leitura', classe: 'selo--perigo' },
-  digitalizada: { rotulo: 'Aguardando revisão', classe: 'selo--neutro' },
-  em_revisao: { rotulo: 'Em revisão', classe: 'selo--info' },
-  com_pendencia: { rotulo: 'Com pendência', classe: 'selo--alerta' },
-  aprovada: { rotulo: 'Aprovada', classe: 'selo--sucesso' },
-  recusada: { rotulo: 'Recusada', classe: 'selo--perigo' }
+  ENVIADA: { rotulo: 'Na fila da IA', classe: 'selo--info' },
+  LENDO: { rotulo: 'Lendo com IA', classe: 'selo--info' },
+  FALHA_LEITURA: { rotulo: 'Erro na leitura', classe: 'selo--perigo' },
+  AGUARDANDO_REVISAO: { rotulo: 'Aguardando revisão', classe: 'selo--neutro' },
+  EM_REVISAO: { rotulo: 'Em revisão', classe: 'selo--info' },
+  COM_PENDENCIA: { rotulo: 'Com pendência', classe: 'selo--alerta' },
+  VALIDADA: { rotulo: 'Validada', classe: 'selo--sucesso' },
+  RECUSADA: { rotulo: 'Recusada', classe: 'selo--perigo' }
 }
 
-/** Ordem das páginas na ficha física. */
+// Ordem das páginas na ficha física.
 export const DOCUMENTOS_DA_FICHA = [
   'Ficha transfusional',
   'ID-DiaCell I, II',
@@ -130,7 +130,7 @@ export const DOCUMENTOS_DA_FICHA = [
 
 export interface FichaEmRevisao {
   status: StatusFicha
-  /** Preenchido pelo backend quando houver busca por cadastro com nome, DN e nome da mãe. */
+ // Preenchido pelo backend quando houver busca por cadastro com nome, DN e nome da mãe.
   cadastroSemelhante: { prontuario: string; motivo: string } | null
   identificacao: IdentificacaoRevisao
   transfusoes: TransfusaoRevisao[]
@@ -145,13 +145,13 @@ export function editarCampo(campo: CampoRevisavel, valor: string): void {
   campo.estado = vazio ? 'vazio' : 'editado'
 }
 
-/** Registra que o campo está em branco no documento original. */
+// Registra que o campo está em branco no documento original.
 export function marcarNaoConsta(campo: CampoRevisavel): void {
   campo.valor = null
   campo.estado = 'nao_consta'
 }
 
-/** Desfaz o "não consta": o campo volta a ficar pendente de preenchimento. */
+// Desfaz o "não consta": o campo volta a ficar pendente de preenchimento.
 export function desfazerNaoConsta(campo: CampoRevisavel): void {
   if (campo.estado === 'nao_consta') campo.estado = 'vazio'
 }
@@ -195,10 +195,10 @@ function pesquisaBioRadVazia(documento: string, pagina: number, celulas: string[
   }
 }
 
-/** Ficha em branco, com a mesma estrutura da ficha física de 4 páginas. */
+// Ficha em branco, com a mesma estrutura da ficha física de 4 páginas.
 export function criarFichaVazia(): FichaEmRevisao {
   return {
-    status: 'em_revisao',
+    status: 'EM_REVISAO',
     cadastroSemelhante: null,
     identificacao: {
       nome: campoVazio('Nome do receptor', 1),
@@ -248,7 +248,7 @@ function ehConferencia(valor: unknown): valor is Conferencia {
   return typeof valor === 'object' && valor !== null && 'estado' in valor && 'rotulo' in valor
 }
 
-/** Todos os itens conferíveis da ficha, na ordem do documento. */
+// Todos os itens conferíveis da ficha, na ordem do documento.
 export function listarConferencias(ficha: FichaEmRevisao): Conferencia[] {
   const doGrupo = (grupo: object) => Object.values(grupo).filter(ehConferencia)
   return [
@@ -289,4 +289,31 @@ export function resumirConferencia(ficha: FichaEmRevisao): ResumoConferencia {
     bloqueios,
     podeAprovar: bloqueios.length === 0
   }
+}
+
+// Resultados possíveis dos testes (PAI, TAD, autocontrole, prova cruzada…), iguais ao enum do backend.
+export type ResultadoTeste = 'POSITIVO' | 'NEGATIVO' | 'NAO_REALIZADO'
+
+export const RESULTADOS_TESTE: { valor: ResultadoTeste; rotulo: string }[] = [
+  { valor: 'POSITIVO', rotulo: 'Positivo' },
+  { valor: 'NEGATIVO', rotulo: 'Negativo' },
+  { valor: 'NAO_REALIZADO', rotulo: 'NR — não realizado' }
+]
+
+// Entende o texto lido pela IA ("neg", "Negativo", "-", "não realizado"…). Devolve null se não reconhecer.
+export function lerResultadoTeste(texto?: string | null): ResultadoTeste | null {
+  if (!texto) return null
+  const normalizado = texto.trim().toUpperCase()
+
+  if (
+    normalizado === 'NR' ||
+    normalizado === 'NAO_REALIZADO' ||
+    normalizado.startsWith('NÃO REALIZ') ||
+    normalizado.startsWith('NAO REALIZ')
+  ) {
+    return 'NAO_REALIZADO'
+  }
+  if (normalizado.startsWith('POS') || normalizado === '+') return 'POSITIVO'
+  if (normalizado.startsWith('NEG') || normalizado === '-') return 'NEGATIVO'
+  return null
 }

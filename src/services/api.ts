@@ -133,6 +133,48 @@ export function recusarFicha(id: string, motivo: string): Promise<void> {
   return enviarJson(`/fichas/${encodeURIComponent(id)}/recusar`, 'POST', { motivo })
 }
 
+// ---------- Fila de revisão ----------
+
+// Formato padrão das listas do backend: { itens, total, pagina, limite }.
+export interface ListaPaginadaApi<T> {
+  itens: T[]
+  total: number
+  pagina: number
+  limite: number
+}
+
+export interface FichaFilaApi {
+  id: number
+  codigo: string
+  status: StatusFicha
+  paciente: { nome: string | null; dataNascimento: string | null; nomeMae: string | null } | null
+  lote: { id: number; codigo: string }
+  revisor: { id: number; nome: string } | null
+  desde: string
+  alertas: string[]
+}
+
+export interface FilaRevisaoApi extends ListaPaginadaApi<FichaFilaApi> {
+  contadores: Record<string, number>
+}
+
+export const FICHAS_POR_PAGINA = 20
+
+export interface FiltrosFila {
+  status: StatusFicha[]
+  busca: string
+  pagina: number
+}
+
+export function listarFilaRevisao(filtros: FiltrosFila): Promise<FilaRevisaoApi> {
+  const parametros = new URLSearchParams()
+  parametros.set('status', filtros.status.join(','))
+  if (filtros.busca) parametros.set('busca', filtros.busca)
+  parametros.set('pagina', String(filtros.pagina))
+  parametros.set('limite', String(FICHAS_POR_PAGINA))
+  return requisitar<FilaRevisaoApi>(`/fichas/revisao?${parametros.toString()}`)
+}
+
 // ---------- Autenticação ----------
 
 export interface RespostaLoginApi {

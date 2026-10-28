@@ -5,7 +5,9 @@
     </p>
     <PageHeader :titulo="titulo" :subtitulo="subtitulo">
       <span class="selo" :class="statusFicha.classe">{{ statusFicha.rotulo }}</span>
-      <router-link :to="{ name: 'fila' }" class="botao"><ArrowLeft :size="16" /> Voltar à fila</router-link>
+      <router-link :to="{ name: 'fila' }" class="botao">
+        <ArrowLeft :size="16" /> Voltar à fila
+      </router-link>
     </PageHeader>
 
     <div class="cartao progresso">
@@ -14,7 +16,7 @@
       <div class="progresso__barra"><span :style="{ width: `${percentual}%` }" /></div>
       <span class="progresso__numeros">{{ conferencia.resolvidos }} de {{ conferencia.total }} itens conferidos</span>
       <span v-if="conferencia.incertos.length" class="selo selo--alerta">
-        {{ conferencia.incertos.map(i => i.rotulo).join(' e ') }} a confirmar
+        {{conferencia.incertos.map(i => i.rotulo).join(' e ')}} a confirmar
       </span>
       <span class="progresso__dica">Todos os campos podem ser editados.</span>
     </div>
@@ -24,12 +26,8 @@
 
     <div class="revisao__colunas">
       <div class="revisao__documento">
-        <DocumentoOriginal
-          :arquivo="arquivo"
-          :pagina="pagina"
-          @selecionar="selecionarArquivo"
-          @mudar-pagina="pagina = $event"
-        />
+        <DocumentoOriginal :arquivo="arquivo" :pagina="pagina" @selecionar="selecionarArquivo"
+          @mudar-pagina="pagina = $event" />
       </div>
 
       <div class="cartao dados">
@@ -52,12 +50,18 @@
 
         <SecaoRevisao titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
           <div class="grade">
-            <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nome" v-bind="eventos(ficha.identificacao.nome)" />
-            <CampoRevisao :campo="ficha.identificacao.racaCor" :opcoes="opcoesRacaCor" v-bind="eventos(ficha.identificacao.racaCor)" />
-            <CampoRevisao :campo="ficha.identificacao.aboRh" :opcoes="opcoesAboRh" v-bind="eventos(ficha.identificacao.aboRh)" />
-            <CampoRevisao :campo="ficha.identificacao.dataNascimento" tipo="date" v-bind="eventos(ficha.identificacao.dataNascimento)" />
-            <CampoRevisao :campo="ficha.identificacao.sexo" :opcoes="opcoesSexo" v-bind="eventos(ficha.identificacao.sexo)" />
-            <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nomeMae" v-bind="eventos(ficha.identificacao.nomeMae)" />
+            <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nome"
+              v-bind="eventos(ficha.identificacao.nome)" />
+            <CampoRevisao :campo="ficha.identificacao.racaCor" :opcoes="opcoesRacaCor"
+              v-bind="eventos(ficha.identificacao.racaCor)" />
+            <CampoRevisao :campo="ficha.identificacao.aboRh" :opcoes="opcoesAboRh"
+              v-bind="eventos(ficha.identificacao.aboRh)" />
+            <CampoRevisao :campo="ficha.identificacao.dataNascimento" tipo="date"
+              v-bind="eventos(ficha.identificacao.dataNascimento)" />
+            <CampoRevisao :campo="ficha.identificacao.sexo" :opcoes="opcoesSexo"
+              v-bind="eventos(ficha.identificacao.sexo)" />
+            <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nomeMae"
+              v-bind="eventos(ficha.identificacao.nomeMae)" />
             <CampoRevisao :campo="ficha.identificacao.prontuario" v-bind="eventos(ficha.identificacao.prontuario)" />
             <CampoRevisao :campo="ficha.identificacao.cartaoSus" v-bind="eventos(ficha.identificacao.cartaoSus)" />
             <CampoRevisao :campo="ficha.identificacao.municipio" v-bind="eventos(ficha.identificacao.municipio)" />
@@ -70,47 +74,61 @@
               <strong>1 cadastro semelhante • {{ ficha.cadastroSemelhante.prontuario }}</strong>
               <small>{{ ficha.cadastroSemelhante.motivo }}</small>
             </div>
-            <router-link class="botao" :to="{ name: 'prontuarios', params: { pacienteId: ficha.cadastroSemelhante.prontuario } }">
+            <router-link class="botao"
+              :to="{ name: 'prontuarios', params: { pacienteId: ficha.cadastroSemelhante.prontuario } }">
               Comparar
             </router-link>
           </div>
         </SecaoRevisao>
 
-        <SecaoRevisao
-          titulo="Ficha transfusional"
-          :pagina="1"
+        <SecaoRevisao titulo="Ficha transfusional" :pagina="1"
           subtitulo="Uma linha por envio de hemocomponente. NR = não realizado, não significa negativo."
-          etiqueta="Registro transfusional"
-        >
+          etiqueta="Registro transfusional">
           <div class="tabela-rolavel" @focusin="pagina = 1">
             <table class="tabela">
               <thead>
                 <tr>
-                  <th>Data do envio</th><th>Hemocomp.</th><th>Nº da doação</th><th>GR.S/RhD</th><th>Vol (ml)</th>
-                  <th>PAI</th><th>Prova cruzada</th><th>Destino</th><th>Responsável</th><th />
+                  <th>Data do envio</th>
+                  <th>Hemocomp.</th>
+                  <th>Nº da doação</th>
+                  <th>GR.S/RhD</th>
+                  <th>Vol (ml)</th>
+                  <th>PAI</th>
+                  <th>Prova cruzada</th>
+                  <th>Destino</th>
+                  <th>Responsável</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(linha, indice) in ficha.transfusoes" :key="indice">
-                  <td><CampoData v-model="linha.dataEnvio" @update:model-value="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.tipoHemocomponente" class="curto" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td>
+                    <CampoData v-model="linha.dataEnvio"
+                      @update:model-value="marcarEditado(ficha.transfusoesConferencia)" />
+                  </td>
+                  <td><input v-model="linha.tipoHemocomponente" class="curto"
+                      @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.numeroDoacao" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.grsRhd" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.volMl" class="curto" inputmode="numeric" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td><input v-model="linha.volMl" class="curto" inputmode="numeric"
+                      @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td>
                     <select v-model="linha.testesPai" @change="marcarEditado(ficha.transfusoesConferencia)">
                       <option :value="null">—</option>
-                      <option v-for="opcao in opcoesResultadoTeste" :key="opcao" :value="opcao">{{ opcao }}</option>
+                      <option v-for="opcao in opcoesTeste" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}
+                      </option>
                     </select>
                   </td>
                   <td>
                     <select v-model="linha.provaCruzada" @change="marcarEditado(ficha.transfusoesConferencia)">
                       <option :value="null">—</option>
-                      <option v-for="opcao in opcoesResultadoTeste" :key="opcao" :value="opcao">{{ opcao }}</option>
+                      <option v-for="opcao in opcoesTeste" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}
+                      </option>
                     </select>
                   </td>
                   <td><input v-model="linha.destino" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.responsavelLiberacao" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td><input v-model="linha.responsavelLiberacao"
+                      @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerTransfusao(indice)">
                       <Trash2 :size="14" />
@@ -120,18 +138,18 @@
               </tbody>
             </table>
           </div>
-          <button type="button" class="botao botao--leve" @click="adicionarTransfusao"><Plus :size="14" /> Adicionar envio</button>
-          <ConferenciaTabela :conferencia="ficha.transfusoesConferencia" @confirmar="confirmar(ficha.transfusoesConferencia)" />
+          <button type="button" class="botao botao--leve" @click="adicionarTransfusao">
+            <Plus :size="14" /> Adicionar envio
+          </button>
+          <ConferenciaTabela :conferencia="ficha.transfusoesConferencia"
+            @confirmar="confirmar(ficha.transfusoesConferencia)" />
         </SecaoRevisao>
 
-        <SecaoRevisao
-          v-for="pesquisa in ficha.pesquisas"
-          :key="pesquisa.documento"
+        <SecaoRevisao v-for="pesquisa in ficha.pesquisas" :key="pesquisa.documento"
           :titulo="pesquisa.documento === 'ID-DiaPanel' ? 'Identificação de anticorpos' : 'Pesquisa de anticorpos irregulares'"
           :pagina="pesquisa.pagina"
           :subtitulo="`${pesquisa.documento} • matriz de antígenos do reagente vinculada ao lote do kit, não precisa ser transcrita`"
-          etiqueta="Bio-Rad"
-        >
+          etiqueta="Bio-Rad">
           <div class="grade">
             <CampoRevisao :campo="pesquisa.data" tipo="date" v-bind="eventos(pesquisa.data)" />
             <CampoRevisao :campo="pesquisa.loteKit" v-bind="eventos(pesquisa.loteKit)" />
@@ -140,7 +158,14 @@
           </div>
           <div class="tabela-rolavel" @focusin="pagina = pesquisa.pagina">
             <table class="tabela tabela--compacta">
-              <thead><tr><th>Célula / controle</th><th>LISS/Coombs</th><th>Enzima</th><th>4 °C</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Célula / controle</th>
+                  <th>LISS/Coombs</th>
+                  <th>Enzima</th>
+                  <th>4 °C</th>
+                </tr>
+              </thead>
               <tbody>
                 <tr v-for="reacao in pesquisa.reacoes" :key="reacao.celula">
                   <th>{{ reacao.celula }}</th>
@@ -154,23 +179,22 @@
               </tbody>
             </table>
           </div>
-          <ConferenciaTabela :conferencia="pesquisa.reacoesConferencia" @confirmar="confirmar(pesquisa.reacoesConferencia)" />
+          <ConferenciaTabela :conferencia="pesquisa.reacoesConferencia"
+            @confirmar="confirmar(pesquisa.reacoesConferencia)" />
         </SecaoRevisao>
 
-        <SecaoRevisao
-          titulo="Pesquisa imuno-hematológica"
-          :pagina="4"
+        <SecaoRevisao titulo="Pesquisa imuno-hematológica" :pagina="4"
           subtitulo="Grupo, fator Rh, anticorpos irregulares, TAD e fenotipagem eritrocitária"
-          etiqueta="Resultados laboratoriais"
-        >
+          etiqueta="Resultados laboratoriais">
           <div class="grade">
             <CampoRevisao :campo="ih.grupoSanguineo" :opcoes="opcoesGrupo" v-bind="eventos(ih.grupoSanguineo)" />
             <CampoRevisao :campo="ih.fatorRh" :opcoes="opcoesPositivoNegativo" v-bind="eventos(ih.fatorRh)" />
             <CampoRevisao :campo="ih.dFraco" v-bind="eventos(ih.dFraco)" />
-            <CampoRevisao :campo="ih.pai" v-bind="eventos(ih.pai)" />
-            <CampoRevisao :campo="ih.autocontrole" v-bind="eventos(ih.autocontrole)" />
-            <CampoRevisao :campo="ih.tad" v-bind="eventos(ih.tad)" />
-            <CampoRevisao class="grade__inteira" :campo="ih.dcScreening" v-bind="eventos(ih.dcScreening)" />
+            <CampoRevisao :campo="ih.pai" :opcoes="opcoesTeste" v-bind="eventos(ih.pai)" />
+            <CampoRevisao :campo="ih.autocontrole" :opcoes="opcoesTeste" v-bind="eventos(ih.autocontrole)" />
+            <CampoRevisao :campo="ih.tad" :opcoes="opcoesTeste" v-bind="eventos(ih.tad)" />
+            <CampoRevisao class="grade__inteira" :campo="ih.dcScreening" :opcoes="opcoesTeste"
+              v-bind="eventos(ih.dcScreening)" />
             <CampoRevisao class="grade__inteira" :campo="ih.observacao" v-bind="eventos(ih.observacao)" />
           </div>
 
@@ -184,18 +208,30 @@
               </select>
             </label>
           </div>
-          <p class="legenda">0 = negativo • w = fraco • 1+ a 4+ = positivo • nt = não testado • NR = não realizado. Vazio não é negativo.</p>
+          <p class="legenda">0 = negativo • w = fraco • 1+ a 4+ = positivo • nt = não testado • NR = não realizado.
+            Vazio não é negativo.</p>
           <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)" />
 
           <h4 class="subtitulo">Identificação de anticorpos irregulares</h4>
           <div class="tabela-rolavel" @focusin="pagina = 4">
             <table class="tabela">
-              <thead><tr><th>Data</th><th>Método</th><th>Especificidade</th><th>Classe</th><th /></tr></thead>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Método</th>
+                  <th>Especificidade</th>
+                  <th>Classe</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>
                 <tr v-for="(anticorpo, indice) in ih.anticorpos" :key="indice">
-                  <td><CampoData v-model="anticorpo.data" @update:model-value="marcarEditado(ih.anticorposConferencia)" /></td>
+                  <td>
+                    <CampoData v-model="anticorpo.data" @update:model-value="marcarEditado(ih.anticorposConferencia)" />
+                  </td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
-                  <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c" @input="marcarEditado(ih.anticorposConferencia)" /></td>
+                  <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
+                      @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.classe" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerAnticorpo(indice)">
@@ -206,7 +242,9 @@
               </tbody>
             </table>
           </div>
-          <button type="button" class="botao botao--leve" @click="adicionarAnticorpo"><Plus :size="14" /> Adicionar anticorpo</button>
+          <button type="button" class="botao botao--leve" @click="adicionarAnticorpo">
+            <Plus :size="14" /> Adicionar anticorpo
+          </button>
           <ConferenciaTabela :conferencia="ih.anticorposConferencia" @confirmar="confirmar(ih.anticorposConferencia)" />
 
           <div class="grade">
@@ -214,7 +252,8 @@
             <CampoRevisao :campo="ih.metodologia" v-bind="eventos(ih.metodologia)" />
             <CampoRevisao :campo="ih.dataExame" tipo="date" v-bind="eventos(ih.dataExame)" />
             <CampoRevisao :campo="ih.solicitante" v-bind="eventos(ih.solicitante)" />
-            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico" v-bind="eventos(ih.responsavelTecnico)" />
+            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico"
+              v-bind="eventos(ih.responsavelTecnico)" />
           </div>
         </SecaoRevisao>
       </div>
@@ -230,21 +269,23 @@
         <div>
           <strong>Conferência humana obrigatória</strong>
           <small v-if="conferencia.podeAprovar">
-            {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de aprovar.
+            {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de
+            aprovar.
           </small>
           <small v-else>{{ conferencia.bloqueios.join(' ') }}</small>
         </div>
       </div>
       <div class="acoes__botoes">
-        <button type="button" class="botao" :disabled="salvando || finalizada" @click="recusar"><Ban :size="14" /> Recusar</button>
-        <button type="button" class="botao" :disabled="salvando || finalizada" @click="sinalizarPendencia"><Flag :size="14" /> Sinalizar pendência</button>
-        <button type="button" class="botao" :disabled="salvando || finalizada" @click="salvarRascunho">Salvar rascunho</button>
-        <button
-          type="button"
-          class="botao botao--primario"
-          :disabled="!conferencia.podeAprovar || salvando || finalizada"
-          @click="aprovar"
-        >
+        <button type="button" class="botao" :disabled="salvando || finalizada" @click="recusar">
+          <Ban :size="14" /> Recusar
+        </button>
+        <button type="button" class="botao" :disabled="salvando || finalizada" @click="sinalizarPendencia">
+          <Flag :size="14" /> Sinalizar pendência
+        </button>
+        <button type="button" class="botao" :disabled="salvando || finalizada" @click="salvarRascunho">Salvar
+          rascunho</button>
+        <button type="button" class="botao botao--primario"
+          :disabled="!conferencia.podeAprovar || salvando || finalizada" @click="aprovar">
           <Check :size="14" /> Aprovar e salvar
         </button>
       </div>
@@ -270,7 +311,7 @@ import { RACA_COR } from '@/domain/paciente'
 import { DadosImunohematologicos, lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
-  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
 } from '@/domain/revisao'
 import { formatarTipoSanguineo, TIPOS_SANGUINEOS } from '@/domain/tipoSanguineo'
 import {
@@ -310,7 +351,7 @@ export default defineComponent({
     const percentual = computed(() =>
       Math.round((conferencia.value.resolvidos / conferencia.value.total) * 100)
     )
-    const finalizada = computed(() => ficha.status === 'aprovada' || ficha.status === 'recusada')
+    const finalizada = computed(() => ficha.status === 'VALIDADA' || ficha.status === 'RECUSADA')
 
     const titulo = computed(() => {
       const nome = ficha.identificacao.nome.valor
@@ -430,7 +471,7 @@ export default defineComponent({
       marcarEditado(ih.value.anticorposConferencia)
     }
 
-    /** Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar. */
+    // Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar.
     async function executar(acao: (id: string) => Promise<void>, sucesso: Mensagem) {
       if (!fichaId.value) {
         mensagem.value = {
@@ -458,7 +499,7 @@ export default defineComponent({
         id => aprovarFicha(id, fichaParaEnvio(ficha)),
         { tipo: 'sucesso', texto: 'Ficha aprovada e gravada no prontuário do paciente.' }
       )
-      if (ok) ficha.status = 'aprovada'
+      if (ok) ficha.status = 'VALIDADA'
     }
 
     function salvarRascunho() {
@@ -475,7 +516,7 @@ export default defineComponent({
         id => sinalizarPendenciaFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila.' }
       )
-      if (ok) ficha.status = 'com_pendencia'
+      if (ok) ficha.status = 'COM_PENDENCIA'
     }
 
     async function recusar() {
@@ -485,7 +526,7 @@ export default defineComponent({
         id => recusarFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha recusada. Ela não entra no prontuário.' }
       )
-      if (ok) ficha.status = 'recusada'
+      if (ok) ficha.status = 'RECUSADA'
     }
 
     return {
@@ -496,7 +537,7 @@ export default defineComponent({
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
-      opcoesResultadoTeste: ['NR', 'POSITIVO', 'NEGATIVO'],
+      opcoesTeste: RESULTADOS_TESTE,
       opcoesRacaCor: Object.entries(RACA_COR).map(([codigo, nome]) => ({ valor: codigo, rotulo: `${codigo} — ${nome}` })),
       opcoesAboRh: TIPOS_SANGUINEOS.map(t => ({ valor: formatarTipoSanguineo(t), rotulo: formatarTipoSanguineo(t) })),
       opcoesGrupo: ['A', 'B', 'AB', 'O'].map(g => ({ valor: g, rotulo: g })),
@@ -560,9 +601,20 @@ export default defineComponent({
   font-size: 13px;
 }
 
-.mensagem--sucesso { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
-.mensagem--info { background: var(--cor-info-suave); color: var(--cor-info); }
-.mensagem--alerta { background: var(--cor-alerta-suave); color: var(--cor-alerta); }
+.mensagem--sucesso {
+  background: var(--cor-sucesso-suave);
+  color: var(--cor-sucesso);
+}
+
+.mensagem--info {
+  background: var(--cor-info-suave);
+  color: var(--cor-info);
+}
+
+.mensagem--alerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
 
 .revisao__colunas {
   display: grid;

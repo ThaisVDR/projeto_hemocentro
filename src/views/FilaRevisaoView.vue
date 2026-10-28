@@ -1,21 +1,15 @@
 <template>
   <section>
-    <PageHeader
-      titulo="Fila de revisão humana"
-      subtitulo="Confira lacunas, corrija a leitura da IA e valide cada ficha antes de ela entrar no prontuário."
-    >
-      <router-link :to="{ name: 'upload' }" class="botao botao--primario"><Upload :size="16" /> Enviar fichas</router-link>
+    <PageHeader titulo="Fila de revisão humana"
+      subtitulo="Confira lacunas, corrija a leitura da IA e valide cada ficha antes de ela entrar no prontuário.">
+      <router-link :to="{ name: 'upload' }" class="botao botao--primario">
+        <Upload :size="16" /> Enviar fichas
+      </router-link>
     </PageHeader>
 
     <div class="filtros">
-      <button
-        v-for="filtro in filtros"
-        :key="filtro.valor"
-        type="button"
-        class="filtro"
-        :class="{ 'filtro--ativo': filtroAtivo === filtro.valor }"
-        @click="filtroAtivo = filtro.valor"
-      >
+      <button v-for="filtro in filtros" :key="filtro.valor" type="button" class="filtro"
+        :class="{ 'filtro--ativo': filtroAtivo === filtro.valor }" @click="escolherFiltro(filtro.valor)">
         <span>{{ filtro.rotulo }}</span>
         <strong>{{ contar(filtro.valor) }}</strong>
       </button>
@@ -25,7 +19,8 @@
       <div class="barra">
         <label class="busca">
           <Search :size="16" />
-          <input v-model="busca" type="search" placeholder="Buscar por paciente ou arquivo" />
+          <input v-model="busca" type="search" placeholder="Buscar por nome, nome da mãe ou data de nascimento"
+            @keyup.enter="buscar" />
         </label>
         <button type="button" class="botao" :disabled="carregando" @click="carregar">
           <RefreshCw :size="14" /> Atualizar
@@ -37,35 +32,49 @@
         <p>{{ erro }}</p>
         <button type="button" class="botao" @click="carregar">Tentar novamente</button>
       </div>
-      <p v-else-if="visiveis.length === 0" class="estado">
-        {{ fichas.length === 0 ? 'Nenhuma ficha enviada ainda.' : 'Nenhuma ficha com esse filtro.' }}
+      <p v-else-if="fichas.length === 0" class="estado">
+        {{ busca ? 'Nenhuma ficha encontrada para essa busca.' : 'Nenhuma ficha nesta etapa.' }}
       </p>
 
       <table v-else class="tabela">
         <thead>
-          <tr><th>Paciente / arquivo</th><th>Situação</th><th>Enviada em</th><th>Enviada por</th><th>Ação</th></tr>
+          <tr>
+            <th>Paciente / ficha</th>
+            <th>Situação</th>
+            <th>Desde</th>
+            <th>Revisor</th>
+            <th>Ação</th>
+          </tr>
         </thead>
         <tbody>
-          <tr v-for="ficha in visiveis" :key="ficha.id">
+          <tr v-for="ficha in fichas" :key="ficha.id">
             <td>
-              <strong>{{ ficha.pacienteNome || 'Nome não identificado' }}</strong>
-              <small>{{ ficha.arquivo }}</small>
+              <strong>{{ ficha.paciente?.nome || 'Nome não identificado' }}</strong>
+              <small>{{ ficha.codigo }}</small>
             </td>
             <td><span class="selo" :class="status[ficha.status].classe">{{ status[ficha.status].rotulo }}</span></td>
-            <td>{{ formatarDataHora(ficha.criadaEm) }}</td>
-            <td>{{ ficha.enviadaPor || '—' }}</td>
+            <td>{{ formatarDataHora(ficha.desde) }}</td>
+            <td>{{ ficha.revisor?.nome || '—' }}</td>
             <td>
-              <router-link
-                v-if="ficha.status !== 'processando'"
-                :to="{ name: 'revisar', params: { fichaId: ficha.id } }"
-                class="link"
-              >
-                {{ ficha.status === 'aprovada' || ficha.status === 'recusada' ? 'Ver' : 'Revisar' }} →
+              <router-link v-if="ficha.status !== 'ENVIADA' && ficha.status !== 'LENDO'"
+                :to="{ name: 'revisar', params: { fichaId: ficha.id } }" class="link">
+                {{ ficha.status === 'VALIDADA' || ficha.status === 'RECUSADA' ? 'Ver' : 'Revisar' }} →
               </router-link>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <div v-if="!carregando && totalPaginas > 1" class="paginacao">
+        <button type="button" class="botao" :disabled="pagina === 1" @click="irParaPagina(pagina - 1)">
+          ← Anterior
+        </button>
+        <span>Página {{ pagina }} de {{ totalPaginas }}</span>
+        <button type="button" class="botao" :disabled="pagina === totalPaginas" @click="irParaPagina(pagina + 1)">
+          Próxima →
+        </button>
+      </div>
+
     </div>
 
     <p class="nota">CPF ausente não bloqueia: a identificação usa nome, data de nascimento e nome da mãe.</p>
@@ -77,18 +86,21 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { RefreshCw, Search, Upload } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA, StatusFicha } from '@/domain/revisao'
-import { FichaResumoApi, listarFichas } from '@/services/api'
+import { FICHAS_POR_PAGINA, FichaFilaApi, listarFilaRevisao } from '@/services/api'
 
 type Filtro = 'pendentes' | StatusFicha
 
 // "Pendentes" reúne tudo o que ainda precisa de ação humana.
-const PENDENTES: StatusFicha[] = ['digitalizada', 'em_revisao', 'com_pendencia', 'erro_leitura']
+const PENDENTES: StatusFicha[] = ['AGUARDANDO_REVISAO', 'EM_REVISAO', 'COM_PENDENCIA']
 
 export default defineComponent({
   name: 'FilaRevisaoView',
   components: { RefreshCw, Search, Upload, PageHeader },
   setup() {
-    const fichas = ref<FichaResumoApi[]>([])
+    const fichas = ref<FichaFilaApi[]>([])
+    const contadores = ref<Record<string, number>>({})
+    const total = ref(0)
+    const pagina = ref(1)
     const carregando = ref(false)
     const erro = ref<string | null>(null)
     const busca = ref('')
@@ -96,37 +108,57 @@ export default defineComponent({
 
     const filtros: { valor: Filtro; rotulo: string }[] = [
       { valor: 'pendentes', rotulo: 'Pendentes' },
-      { valor: 'digitalizada', rotulo: 'Aguardando revisão' },
-      { valor: 'em_revisao', rotulo: 'Em revisão' },
-      { valor: 'com_pendencia', rotulo: 'Com pendência' },
-      { valor: 'aprovada', rotulo: 'Aprovadas' }
+      { valor: 'AGUARDANDO_REVISAO', rotulo: 'Aguardando revisão' },
+      { valor: 'EM_REVISAO', rotulo: 'Em revisão' },
+      { valor: 'COM_PENDENCIA', rotulo: 'Com pendência' },
+      { valor: 'VALIDADA', rotulo: 'Validadas' }
+
     ]
 
-    function pertence(ficha: FichaResumoApi, filtro: Filtro) {
-      return filtro === 'pendentes' ? PENDENTES.includes(ficha.status) : ficha.status === filtro
+    function statusDoFiltro(filtro: Filtro): StatusFicha[] {
+      return filtro === 'pendentes' ? PENDENTES : [filtro]
     }
 
     function contar(filtro: Filtro) {
-      return fichas.value.filter(f => pertence(f, filtro)).length
+      if (filtro === 'pendentes') return contadores.value.todas ?? 0
+      return contadores.value[filtro] ?? 0
     }
 
-    const visiveis = computed(() => {
-      const termo = busca.value.trim().toLowerCase()
-      return fichas.value
-        .filter(f => pertence(f, filtroAtivo.value))
-        .filter(f => !termo || `${f.pacienteNome ?? ''} ${f.arquivo}`.toLowerCase().includes(termo))
-    })
+    const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / FICHAS_POR_PAGINA)))
 
     async function carregar() {
       carregando.value = true
       erro.value = null
       try {
-        fichas.value = await listarFichas()
+        const resposta = await listarFilaRevisao({
+          status: statusDoFiltro(filtroAtivo.value),
+          busca: busca.value.trim(),
+          pagina: pagina.value
+        })
+        fichas.value = resposta.itens
+        contadores.value = resposta.contadores
+        total.value = resposta.total
       } catch (e) {
         erro.value = (e as Error).message
       } finally {
         carregando.value = false
       }
+    }
+
+    function escolherFiltro(filtro: Filtro) {
+      filtroAtivo.value = filtro
+      pagina.value = 1
+      carregar()
+    }
+
+    function buscar() {
+      pagina.value = 1
+      carregar()
+    }
+
+    function irParaPagina(nova: number) {
+      pagina.value = nova
+      carregar()
     }
 
     function formatarDataHora(iso: string) {
@@ -137,8 +169,8 @@ export default defineComponent({
     onMounted(carregar)
 
     return {
-      fichas, carregando, erro, busca, filtroAtivo, filtros, visiveis,
-      contar, carregar, formatarDataHora, status: STATUS_FICHA
+      fichas, carregando, erro, busca, filtroAtivo, filtros, pagina, totalPaginas,
+      contar, carregar, escolherFiltro, buscar, irParaPagina, formatarDataHora, status: STATUS_FICHA
     }
   }
 })
@@ -150,6 +182,16 @@ export default defineComponent({
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--cor-texto-suave);
 }
 
 .filtro {
