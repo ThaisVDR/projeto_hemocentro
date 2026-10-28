@@ -47,7 +47,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="ficha in ficha" :key="ficha.id">
+          <tr v-for="ficha in fichas" :key="ficha.id">
             <td>
               <strong>{{ ficha.paciente?.nome || 'Nome não identificado' }}</strong>
               <small>{{ ficha.codigo }}</small>
