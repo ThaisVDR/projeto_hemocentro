@@ -97,7 +97,6 @@ export interface ImunohematologiaRevisao {
   anticorposConferencia: Conferencia
 }
 
-// Ciclo da ficha combinado com o backend: o upload já passa pela IA e grava a ficha como "digitalizada"; só fichas "aprovada" entram no prontuário, dashboard e migração.
 // Mesmos nomes do enum StatusFicha do backend (prisma/schema.prisma).
 
 export type StatusFicha =

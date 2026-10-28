@@ -92,10 +92,12 @@ export default defineComponent({
     const filtroAtivo = ref<Filtro>('pendentes')
 
     const filtros: { valor: Filtro; rotulo: string }[] = [
+      { valor: 'pendentes', rotulo: 'Pendentes' },
       { valor: 'AGUARDANDO_REVISAO', rotulo: 'Aguardando revisão' },
       { valor: 'EM_REVISAO', rotulo: 'Em revisão' },
       { valor: 'COM_PENDENCIA', rotulo: 'Com pendência' },
       { valor: 'VALIDADA', rotulo: 'Validadas' }
+      
     ]
 
     function pertence(ficha: FichaResumoApi, filtro: Filtro) {
