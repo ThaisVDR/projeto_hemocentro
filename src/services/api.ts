@@ -158,8 +158,21 @@ export interface FilaRevisaoApi extends ListaPaginadaApi<FichaFilaApi> {
   contadores: Record<string, number>
 }
 
-export function listarFilaRevisao(): Promise<FilaRevisaoApi> {
-  return requisitar<FilaRevisaoApi>('/fichas/revisao?limite=100')
+export const FICHAS_POR_PAGINA = 20
+
+export interface FiltrosFila {
+  status: StatusFicha[]
+  busca: string
+  pagina: number
+}
+
+export function listarFilaRevisao(filtros: FiltrosFila): Promise<FilaRevisaoApi> {
+  const parametros = new URLSearchParams()
+  parametros.set('status', filtros.status.join(','))
+  if (filtros.busca) parametros.set('busca', filtros.busca)
+  parametros.set('pagina', String(filtros.pagina))
+  parametros.set('limite', String(FICHAS_POR_PAGINA))
+  return requisitar<FilaRevisaoApi>(`/fichas/revisao?${parametros.toString()}`)
 }
 
 // ---------- Autenticação ----------
