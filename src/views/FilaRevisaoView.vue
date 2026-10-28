@@ -19,7 +19,7 @@
       <div class="barra">
         <label class="busca">
           <Search :size="16" />
-          <input v-model="busca" type="search" placeholder="Buscar por paciente ou arquivo" />
+          <input v-model="busca" type="search" placeholder="Buscar por paciente ou código" />
         </label>
         <button type="button" class="botao" :disabled="carregando" @click="carregar">
           <RefreshCw :size="14" /> Atualizar
@@ -38,22 +38,22 @@
       <table v-else class="tabela">
         <thead>
           <tr>
-            <th>Paciente / arquivo</th>
+            <th>Paciente / ficha</th>
             <th>Situação</th>
-            <th>Enviada em</th>
-            <th>Enviada por</th>
+            <th>Desde</th>
+            <th>Revisor</th>
             <th>Ação</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="ficha in visiveis" :key="ficha.id">
             <td>
-              <strong>{{ ficha.pacienteNome || 'Nome não identificado' }}</strong>
-              <small>{{ ficha.arquivo }}</small>
+              <strong>{{ ficha.paciente?.nome || 'Nome não identificado' }}</strong>
+              <small>{{ ficha.codigo }}</small>
             </td>
             <td><span class="selo" :class="status[ficha.status].classe">{{ status[ficha.status].rotulo }}</span></td>
-            <td>{{ formatarDataHora(ficha.criadaEm) }}</td>
-            <td>{{ ficha.enviadaPor || '—' }}</td>
+            <td>{{ formatarDataHora(ficha.desde) }}</td>
+            <td>{{ ficha.revisor?.nome || '—' }}</td>
             <td>
               <router-link v-if="ficha.status !== 'ENVIADA' && ficha.status !== 'LENDO'"
                 :to="{ name: 'revisar', params: { fichaId: ficha.id } }" class="link">
@@ -74,7 +74,7 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { RefreshCw, Search, Upload } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA, StatusFicha } from '@/domain/revisao'
-import { FichaResumoApi, listarFichas } from '@/services/api'
+import { FichaFilaApi, listarFilaRevisao } from '@/services/api'
 
 type Filtro = 'pendentes' | StatusFicha
 
@@ -85,7 +85,7 @@ export default defineComponent({
   name: 'FilaRevisaoView',
   components: { RefreshCw, Search, Upload, PageHeader },
   setup() {
-    const fichas = ref<FichaResumoApi[]>([])
+    const fichas = ref<FichaFilaApi[]>([])
     const carregando = ref(false)
     const erro = ref<string | null>(null)
     const busca = ref('')
@@ -97,10 +97,10 @@ export default defineComponent({
       { valor: 'EM_REVISAO', rotulo: 'Em revisão' },
       { valor: 'COM_PENDENCIA', rotulo: 'Com pendência' },
       { valor: 'VALIDADA', rotulo: 'Validadas' }
-      
+
     ]
 
-    function pertence(ficha: FichaResumoApi, filtro: Filtro) {
+    function pertence(ficha: FichaFilaApi, filtro: Filtro) {
       return filtro === 'pendentes' ? PENDENTES.includes(ficha.status) : ficha.status === filtro
     }
 
@@ -112,14 +112,15 @@ export default defineComponent({
       const termo = busca.value.trim().toLowerCase()
       return fichas.value
         .filter(f => pertence(f, filtroAtivo.value))
-        .filter(f => !termo || `${f.pacienteNome ?? ''} ${f.arquivo}`.toLowerCase().includes(termo))
+        .filter(f => !termo || `${f.paciente?.nome ?? ''} ${f.codigo}`.toLowerCase().includes(termo))
     })
 
     async function carregar() {
       carregando.value = true
       erro.value = null
       try {
-        fichas.value = await listarFichas()
+        const resposta = await listarFilaRevisao()
+        fichas.value = resposta.itens
       } catch (e) {
         erro.value = (e as Error).message
       } finally {
