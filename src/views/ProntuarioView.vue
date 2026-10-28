@@ -1,82 +1,93 @@
 <template>
   <section>
-    <PageHeader
-      titulo="Consulta de prontuário"
-      subtitulo="Consulte informações conferidas, histórico e documentos de origem."
-    />
+    <PageHeader titulo="Consulta de prontuário"
+      subtitulo="Consulte informações conferidas, histórico e documentos de origem.">
+      <router-link v-if="pacienteId" :to="{ name: 'prontuarios' }" class="botao">
+        <ArrowLeft :size="16" /> Voltar à busca
+      </router-link>
+    </PageHeader>
 
-    <form class="cartao busca" @submit.prevent="buscar">
-      <label>
-        Nome do Paciente
-        <input v-model="nome" type="text" placeholder="Digite o nome do paciente" />
-      </label>
+    <template v-if="!pacienteId">
 
-      <label>
-        Data de nascimento
-        <CampoData v-model="dataNascimento" />
-      </label>
+      <form class="cartao busca" @submit.prevent="buscar">
+        <label>
+          Nome do Paciente
+          <input v-model="nome" type="text" placeholder="Digite o nome do paciente" />
+        </label>
 
-      <label>
-        Nome da Mãe
-        <input v-model="nomeMae" type="text" />
-      </label>
+        <label>
+          Data de nascimento
+          <CampoData v-model="dataNascimento" />
+        </label>
 
-    <button type="submit" class="botao botao--primario" :disabled="!nome.trim() || carregando">Buscar paciente</button>
+        <label>
+          Nome da Mãe
+          <input v-model="nomeMae" type="text" />
+        </label>
 
-    </form>
+        <button type="submit" class="botao botao--primario" :disabled="!nome.trim() || carregando">Buscar
+          paciente</button>
 
-    <p v-if="carregando" class="estado">Buscando pacientes…</p>
-    <p v-else-if="erro" class="estado estado--erro">{{ erro }}</p>
-    <p v-else-if="pacientes && pacientes.length === 0" class="estado">
-      Nenhum paciente encontrado. Confira a grafia do nome ou busque também pelo nome da mãe.
-    </p>
-    <div v-else-if="pacientes" class="cartao resultados">
-      <p class="resultados__titulo">{{ pacientes.length }} paciente(s) encontrado(s)</p>
+      </form>
 
-      <ul class="resultados__lista">
-        <li v-for="paciente in pacientes" :key="paciente.id">
-          <router-link
-            :to="{ name: 'prontuarios', params: { pacienteId: paciente.id } }"
-            class="resultado"
-          >
-            <span class="resultado__avatar">{{ iniciais(paciente.nome) }}</span>
+      <p v-if="carregando" class="estado">Buscando pacientes…</p>
+      <p v-else-if="erro" class="estado estado--erro">{{ erro }}</p>
+      <p v-else-if="pacientes && pacientes.length === 0" class="estado">
+        Nenhum paciente encontrado. Confira a grafia do nome ou busque também pelo nome da mãe.
+      </p>
+      <div v-else-if="pacientes" class="cartao resultados">
+        <p class="resultados__titulo">{{ pacientes.length }} paciente(s) encontrado(s)</p>
 
-            <span class="resultado__dados">
-              <strong>{{ paciente.nome }}</strong>
-              <small>
-                Nascimento: {{ formatarData(paciente.dataNascimento) || 'não informado' }}
-                • Mãe: {{ paciente.nomeMae || 'não informada' }}
-              </small>
-            </span>
+        <ul class="resultados__lista">
+          <li v-for="paciente in pacientes" :key="paciente.id">
+            <router-link :to="{ name: 'prontuarios', params: { pacienteId: paciente.id } }" class="resultado">
+              <span class="resultado__avatar">{{ iniciais(paciente.nome) }}</span>
 
-            <span class="resultado__destaques">
-              <span class="selo selo--perigo">{{ textoRacaCor(paciente.racaCor) }}</span>
-              <span class="selo selo--neutro">{{ paciente.aboRh || 'ABO/Rh não informado' }}</span>
-            </span>
+              <span class="resultado__dados">
+                <strong>{{ paciente.nome }}</strong>
+                <small>
+                  Nascimento: {{ formatarData(paciente.dataNascimento) || 'não informado' }}
+                  • Mãe: {{ paciente.nomeMae || 'não informada' }}
+                </small>
+              </span>
 
-            <ChevronRight :size="18" class="resultado__seta" />
-          </router-link>
-        </li>
-      </ul>
-    </div>
-    
+              <span class="resultado__destaques">
+                <span class="selo selo--perigo">{{ textoRacaCor(paciente.racaCor) }}</span>
+                <span class="selo selo--neutro">{{ paciente.aboRh || 'ABO/Rh não informado' }}</span>
+              </span>
+
+              <ChevronRight :size="18" class="resultado__seta" />
+            </router-link>
+          </li>
+        </ul>
+      </div>
+    </template>
+    <template v-else>
+      <p v-if="carregandoPaciente" class="estado">Carregando prontuário…</p>
+      <p v-else-if="erroPaciente" class="estado estado--erro">{{ erroPaciente }}</p>
+      <template v-else-if="paciente">
+        <CabecalhoPaciente :paciente="paciente" />
+        <PerfilTransfusional :paciente="paciente" />
+      </template>
+    </template>
   </section>
 </template>
 
 
 <script lang="ts">
 import PageHeader from '@/components/PageHeader.vue'
-import { defineComponent, ref } from 'vue'
+import { computed, defineComponent, ref, watch } from 'vue'
 import CampoData from '@/components/CampoData.vue'
-import { buscarPacientes, PacienteResumoApi } from '@/services/api'
-import { ChevronRight } from 'lucide-vue-next'
-import { formatarRacaCor } from '@/domain/paciente'
-import { lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
-import { formatarData } from '@/utils/formatacao'
+import { buscarPaciente, buscarPacientes, PacienteDetalheApi, PacienteResumoApi } from '@/services/api'
+import { ChevronRight, ArrowLeft } from 'lucide-vue-next'
+import { formatarData, textoRacaCor, iniciais } from '@/utils/formatacao'
+import { useRoute } from 'vue-router'
+import CabecalhoPaciente from '@/components/prontuario/CabecalhoPaciente.vue'
+import PerfilTransfusional from '@/components/prontuario/PerfilTransfusional.vue'
 
 export default defineComponent({
   name: 'ProntuarioView',
-  components: { PageHeader, CampoData, ChevronRight },
+  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente, PerfilTransfusional },
   setup() {
     const nome = ref('');
     const dataNascimento = ref('');
@@ -84,6 +95,11 @@ export default defineComponent({
     const carregando = ref(false)
     const erro = ref<string | null>(null)
     const pacientes = ref<PacienteResumoApi[] | null>(null)
+    const rota = useRoute()
+    const pacienteId = computed(() => (rota.params.pacienteId as string | undefined) || null)
+    const paciente = ref<PacienteDetalheApi | null>(null)
+    const carregandoPaciente = ref(false)
+    const erroPaciente = ref<string | null>(null)
 
     async function buscar() {
       carregando.value = true
@@ -103,32 +119,33 @@ export default defineComponent({
       }
     }
 
-      function textoRacaCor(valor: string | null): string {
-      const codigo = lerCodigoRacaCor(valor)
-      if (codigo) return formatarRacaCor(codigo)
-      return valor || 'Não informada'
-      }
+    async function carregarPaciente(id: string | null) {
+      paciente.value = null
+      erroPaciente.value = null
+      if (!id) return
 
-      function iniciais(nomeCompleto: string): string {
-      const palavras = nomeCompleto.trim().split(' ').filter(palavra => palavra !== '')
-      const primeira = palavras[0]
-      if (palavras.length === 1) {
-        return primeira[0].toUpperCase()
-      }
-
-      const ultima = palavras[palavras.length - 1]
-      return (primeira[0] + ultima[0]).toUpperCase()
+      carregandoPaciente.value = true
+      try {
+        paciente.value = await buscarPaciente(id)
+      } catch (e) {
+      erroPaciente.value = (e as Error).message
+    } finally {
+      carregandoPaciente.value = false
     }
+  }
 
-    return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData};
-  } 
+    watch(pacienteId, carregarPaciente, { immediate: true })
+
+
+    return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
+}
 });
 
 </script>
 
 <style scoped>
 .busca {
-display: grid;
+  display: grid;
   grid-template-columns: 2fr 1fr 2fr auto;
   gap: 12px;
   align-items: end;
@@ -215,5 +232,4 @@ display: grid;
 .resultado__seta {
   color: var(--cor-texto-fraco);
 }
-
 </style>

@@ -201,3 +201,27 @@ export function buscarPacientes(filtros: FiltrosPaciente): Promise<PacienteResum
   if (filtros.nomeMae) parametros.set('nomeMae', filtros.nomeMae)
   return requisitar<PacienteResumoApi[]>(`/pacientes?${parametros.toString()}`)
 }
+
+export interface AnticorpoPacienteApi {
+  data: string | null
+  especificidade: string
+  classe: string | null
+}
+
+export interface PacienteDetalheApi extends PacienteResumoApi {
+  sexo: string | null
+  cpf: string | null
+  cartaoSus: string | null
+  municipio: string | null
+  diagnostico: string | null
+  dFraco: string | null
+  antigenosNegativos: string[]
+  anticorpos: AnticorpoPacienteApi[]
+  ultimaValidacao: { em: string; por: string } | null
+}
+
+export function buscarPaciente(id: string):
+Promise<PacienteDetalheApi> {
+  return requisitar<PacienteDetalheApi>
+  (`/pacientes/${encodeURIComponent(id)}`)
+}
