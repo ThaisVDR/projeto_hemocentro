@@ -290,3 +290,30 @@ export function resumirConferencia(ficha: FichaEmRevisao): ResumoConferencia {
     podeAprovar: bloqueios.length === 0
   }
 }
+
+/** Resultados possíveis dos testes (PAI, TAD, autocontrole, prova cruzada…), iguais ao enum do backend. */
+export type ResultadoTeste = 'POSITIVO' | 'NEGATIVO' | 'NAO_REALIZADO'
+
+export const RESULTADOS_TESTE: { valor: ResultadoTeste; rotulo: string }[] = [
+  { valor: 'POSITIVO', rotulo: 'Positivo' },
+  { valor: 'NEGATIVO', rotulo: 'Negativo' },
+  { valor: 'NAO_REALIZADO', rotulo: 'NR — não realizado' }
+]
+
+/** Entende o texto lido pela IA ("neg", "Negativo", "-", "não realizado"…). Devolve null se não reconhecer. */
+export function lerResultadoTeste(texto?: string | null): ResultadoTeste | null {
+  if (!texto) return null
+  const normalizado = texto.trim().toUpperCase()
+
+  if (
+    normalizado === 'NR' ||
+    normalizado === 'NAO_REALIZADO' ||
+    normalizado.startsWith('NÃO REALIZ') ||
+    normalizado.startsWith('NAO REALIZ')
+  ) {
+    return 'NAO_REALIZADO'
+  }
+  if (normalizado.startsWith('POS') || normalizado === '+') return 'POSITIVO'
+  if (normalizado.startsWith('NEG') || normalizado === '-') return 'NEGATIVO'
+  return null
+}

@@ -2,7 +2,7 @@ import { FichaDetalheApi } from '@/services/api'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { RACA_COR } from './paciente'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao } from './revisao'
+import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste } from './revisao'
 import { formatarTipoSanguineo, lerTipoSanguineo } from './tipoSanguineo'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
@@ -30,6 +30,17 @@ function textoFatorRh(texto: string | null): string | null {
   if (/pos|\+/i.test(texto)) return 'Positivo'
   if (/neg|-/i.test(texto)) return 'Negativo'
   return texto
+}
+
+/** Sugere um resultado de teste; se a IA leu algo que não é Positivo/Negativo/NR, marca como incerto. */
+function sugerirTeste(campo: CampoRevisavel, texto: string | null): void {
+  const resultado = lerResultadoTeste(texto)
+  if (resultado) {
+    sugerir(campo, resultado)
+  } else if (texto) {
+    campo.estado = 'incerto'
+    campo.nota = `Leitura da IA não reconhecida: "${texto}"`
+  }
 }
 
 const CAMPOS_PACIENTE: Record<string, keyof IdentificacaoRevisao> = {
@@ -80,9 +91,9 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   if (principal) {
     sugerir(ih.grupoSanguineo, principal.gs)
     sugerir(ih.fatorRh, textoFatorRh(principal.rh))
-    sugerir(ih.tad, principal.tad)
-    sugerir(ih.pai, principal.pai)
-    sugerir(ih.autocontrole, principal.autocontrole)
+    sugerirTeste(ih.tad, principal.tad)
+    sugerirTeste(ih.pai, principal.pai)
+    sugerirTeste(ih.autocontrole, principal.autocontrole)
     sugerir(ih.dataExame, principal.data)
     sugerir(ih.responsavelTecnico, principal.responsavel)
   }
