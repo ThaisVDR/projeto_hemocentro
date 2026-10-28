@@ -351,7 +351,7 @@ export default defineComponent({
     const percentual = computed(() =>
       Math.round((conferencia.value.resolvidos / conferencia.value.total) * 100)
     )
-    const finalizada = computed(() => ficha.status === 'aprovada' || ficha.status === 'recusada')
+    const finalizada = computed(() => ficha.status === 'VALIDADA' || ficha.status === 'RECUSADA')
 
     const titulo = computed(() => {
       const nome = ficha.identificacao.nome.valor
@@ -471,7 +471,7 @@ export default defineComponent({
       marcarEditado(ih.value.anticorposConferencia)
     }
 
-    /** Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar. */
+    // Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar.
     async function executar(acao: (id: string) => Promise<void>, sucesso: Mensagem) {
       if (!fichaId.value) {
         mensagem.value = {
@@ -499,7 +499,7 @@ export default defineComponent({
         id => aprovarFicha(id, fichaParaEnvio(ficha)),
         { tipo: 'sucesso', texto: 'Ficha aprovada e gravada no prontuário do paciente.' }
       )
-      if (ok) ficha.status = 'aprovada'
+      if (ok) ficha.status = 'VALIDADA'
     }
 
     function salvarRascunho() {
@@ -516,7 +516,7 @@ export default defineComponent({
         id => sinalizarPendenciaFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila.' }
       )
-      if (ok) ficha.status = 'com_pendencia'
+      if (ok) ficha.status = 'COM_PENDENCIA'
     }
 
     async function recusar() {
@@ -526,7 +526,7 @@ export default defineComponent({
         id => recusarFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha recusada. Ela não entra no prontuário.' }
       )
-      if (ok) ficha.status = 'recusada'
+      if (ok) ficha.status = 'RECUSADA'
     }
 
     return {

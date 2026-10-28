@@ -1,21 +1,15 @@
 <template>
   <section>
-    <PageHeader
-      titulo="Fila de revisão humana"
-      subtitulo="Confira lacunas, corrija a leitura da IA e valide cada ficha antes de ela entrar no prontuário."
-    >
-      <router-link :to="{ name: 'upload' }" class="botao botao--primario"><Upload :size="16" /> Enviar fichas</router-link>
+    <PageHeader titulo="Fila de revisão humana"
+      subtitulo="Confira lacunas, corrija a leitura da IA e valide cada ficha antes de ela entrar no prontuário.">
+      <router-link :to="{ name: 'upload' }" class="botao botao--primario">
+        <Upload :size="16" /> Enviar fichas
+      </router-link>
     </PageHeader>
 
     <div class="filtros">
-      <button
-        v-for="filtro in filtros"
-        :key="filtro.valor"
-        type="button"
-        class="filtro"
-        :class="{ 'filtro--ativo': filtroAtivo === filtro.valor }"
-        @click="filtroAtivo = filtro.valor"
-      >
+      <button v-for="filtro in filtros" :key="filtro.valor" type="button" class="filtro"
+        :class="{ 'filtro--ativo': filtroAtivo === filtro.valor }" @click="filtroAtivo = filtro.valor">
         <span>{{ filtro.rotulo }}</span>
         <strong>{{ contar(filtro.valor) }}</strong>
       </button>
@@ -43,7 +37,13 @@
 
       <table v-else class="tabela">
         <thead>
-          <tr><th>Paciente / arquivo</th><th>Situação</th><th>Enviada em</th><th>Enviada por</th><th>Ação</th></tr>
+          <tr>
+            <th>Paciente / arquivo</th>
+            <th>Situação</th>
+            <th>Enviada em</th>
+            <th>Enviada por</th>
+            <th>Ação</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="ficha in visiveis" :key="ficha.id">
@@ -55,12 +55,9 @@
             <td>{{ formatarDataHora(ficha.criadaEm) }}</td>
             <td>{{ ficha.enviadaPor || '—' }}</td>
             <td>
-              <router-link
-                v-if="ficha.status !== 'processando'"
-                :to="{ name: 'revisar', params: { fichaId: ficha.id } }"
-                class="link"
-              >
-                {{ ficha.status === 'aprovada' || ficha.status === 'recusada' ? 'Ver' : 'Revisar' }} →
+              <router-link v-if="ficha.status !== 'ENVIADA' && ficha.status !== 'LENDO'"
+                :to="{ name: 'revisar', params: { fichaId: ficha.id } }" class="link">
+                {{ ficha.status === 'VALIDADA' || ficha.status === 'RECUSADA' ? 'Ver' : 'Revisar' }} →
               </router-link>
             </td>
           </tr>
@@ -82,7 +79,7 @@ import { FichaResumoApi, listarFichas } from '@/services/api'
 type Filtro = 'pendentes' | StatusFicha
 
 // "Pendentes" reúne tudo o que ainda precisa de ação humana.
-const PENDENTES: StatusFicha[] = ['digitalizada', 'em_revisao', 'com_pendencia', 'erro_leitura']
+const PENDENTES: StatusFicha[] = ['AGUARDANDO_REVISAO', 'EM_REVISAO', 'COM_PENDENCIA', 'FALHA_LEITURA']
 
 export default defineComponent({
   name: 'FilaRevisaoView',
@@ -95,11 +92,10 @@ export default defineComponent({
     const filtroAtivo = ref<Filtro>('pendentes')
 
     const filtros: { valor: Filtro; rotulo: string }[] = [
-      { valor: 'pendentes', rotulo: 'Pendentes' },
-      { valor: 'digitalizada', rotulo: 'Aguardando revisão' },
-      { valor: 'em_revisao', rotulo: 'Em revisão' },
-      { valor: 'com_pendencia', rotulo: 'Com pendência' },
-      { valor: 'aprovada', rotulo: 'Aprovadas' }
+      { valor: 'AGUARDANDO_REVISAO', rotulo: 'Aguardando revisão' },
+      { valor: 'EM_REVISAO', rotulo: 'Em revisão' },
+      { valor: 'COM_PENDENCIA', rotulo: 'Com pendência' },
+      { valor: 'VALIDADA', rotulo: 'Validadas' }
     ]
 
     function pertence(ficha: FichaResumoApi, filtro: Filtro) {

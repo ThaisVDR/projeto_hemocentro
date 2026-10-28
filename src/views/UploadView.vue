@@ -1,10 +1,10 @@
 <template>
   <section>
-    <PageHeader
-      titulo="Upload de documentos"
-      subtitulo="Envie as fichas digitalizadas. A leitura pela IA só se torna registro após a revisão humana."
-    >
-      <router-link :to="{ name: 'fila' }" class="botao"><ListChecks :size="16" /> Ver fila de revisão</router-link>
+    <PageHeader titulo="Upload de documentos"
+      subtitulo="Envie as fichas digitalizadas. A leitura pela IA só se torna registro após a revisão humana.">
+      <router-link :to="{ name: 'fila' }" class="botao">
+        <ListChecks :size="16" /> Ver fila de revisão
+      </router-link>
     </PageHeader>
 
     <div class="upload">
@@ -12,17 +12,14 @@
         <h2>Novas fichas</h2>
         <p class="suave">Um arquivo por ficha: PDF com as páginas na ordem original, ou imagem avulsa.</p>
 
-        <label
-          class="envio"
-          :class="{ 'envio--arrastando': arrastando }"
-          @dragover.prevent="arrastando = true"
-          @dragleave="arrastando = false"
-          @drop.prevent="aoSoltar"
-        >
+        <label class="envio" :class="{ 'envio--arrastando': arrastando }" @dragover.prevent="arrastando = true"
+          @dragleave="arrastando = false" @drop.prevent="aoSoltar">
           <UploadCloud :size="28" />
           <strong>Arraste os documentos para cá</strong>
           <small>PDF, JPG ou PNG • até {{ limiteMb }} MB por arquivo</small>
-          <span class="botao botao--primario"><Plus :size="16" /> Selecionar arquivos</span>
+          <span class="botao botao--primario">
+            <Plus :size="16" /> Selecionar arquivos
+          </span>
           <input type="file" multiple :accept="tiposAceitos" hidden @change="aoEscolher" />
         </label>
       </div>
@@ -31,7 +28,8 @@
         <h2>Antes de enviar</h2>
         <ol>
           <li><strong>Confira a legibilidade</strong><span>Evite cortes, sombras e páginas invertidas.</span></li>
-          <li><strong>Mantenha a sequência</strong><span>No PDF, as páginas devem seguir a ordem da ficha física.</span></li>
+          <li><strong>Mantenha a sequência</strong><span>No PDF, as páginas devem seguir a ordem da ficha física.</span>
+          </li>
           <li><strong>Revise o resultado</strong><span>Textos manuscritos exigem conferência campo a campo.</span></li>
         </ol>
         <p class="suave">O arquivo original fica vinculado à ficha durante toda a revisão.</p>
@@ -41,7 +39,14 @@
     <div v-if="envios.length" class="cartao envios">
       <h2>Enviados nesta sessão</h2>
       <table class="tabela">
-        <thead><tr><th>Arquivo original</th><th>Tamanho</th><th>Situação</th><th>Ação</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Arquivo original</th>
+            <th>Tamanho</th>
+            <th>Situação</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
         <tbody>
           <tr v-for="envio in envios" :key="envio.chave">
             <td><strong>{{ envio.nome }}</strong></td>
@@ -55,14 +60,12 @@
               <small v-if="envio.erro" class="erro">{{ envio.erro }}</small>
             </td>
             <td>
-              <router-link
-                v-if="envio.ficha && envio.ficha.status !== 'processando'"
-                :to="{ name: 'revisar', params: { fichaId: envio.ficha.id } }"
-                class="link"
-              >
+              <router-link v-if="envio.ficha && envio.ficha.status !== 'ENVIADA' && envio.ficha.status !== 'LENDO'"
+                :to="{ name: 'revisar', params: { fichaId: envio.ficha.id } }" class="link">
                 Revisar →
               </router-link>
-              <button v-else-if="envio.estado === 'erro'" type="button" class="link" @click="enviar(envio)">Tentar de novo</button>
+              <button v-else-if="envio.estado === 'erro'" type="button" class="link" @click="enviar(envio)">Tentar de
+                novo</button>
             </td>
           </tr>
         </tbody>
