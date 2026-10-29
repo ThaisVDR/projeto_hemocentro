@@ -152,6 +152,15 @@ export function enviarLote(arquivos: File[]): Promise<LoteCriadoApi> {
   return requisitar<LoteCriadoApi>('/lotes', { method: 'POST', body: formulario })
 }
 
+export function buscarLote(id: number): Promise<{ documentos: DocumentoLoteApi[] }> {
+  return requisitar(`/lotes/${id}`)
+}
+
+export function reprocessarDocumento(id: number): Promise<unknown> {
+  return requisitar(`/documentos/${id}/reprocessar`, { method: 'POST' })
+}
+
+
 // ---------- Fila de revisão ----------
 
 // Formato padrão das listas do backend: { itens, total, pagina, limite }.

@@ -58,13 +58,19 @@
                 {{ status[envio.documento.status].rotulo }}
               </span>
               <small v-if="envio.erro" class="erro">{{ envio.erro }}</small>
+              <small v-if="envio.documento?.erro" class="erro">{{ envio.documento.erro }}</small>
             </td>
             <td>
               <router-link v-if="envio.documento?.status === 'AGUARDANDO_REVISAO'"
                 :to="{ name: 'revisar', params: { fichaId: envio.documento.fichaId } }" class="link">
                 Revisar →
               </router-link>
-              <button v-else-if="envio.estado === 'erro'" type="button" class="link" @click="enviarGrupo([envio])">Tentar de
+              <button v-else-if="envio.documento?.status === 'FALHA_LEITURA'" type="button" class="link"
+                @click="reprocessar(envio)">
+                Reprocessar
+              </button>
+              <button v-else-if="envio.estado === 'erro'" type="button" class="link"
+                @click="enviarGrupo([envio])">Tentar de
                 novo</button>
             </td>
           </tr>
@@ -75,11 +81,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref } from 'vue'
+import { defineComponent, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ListChecks, Plus, UploadCloud } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA } from '@/domain/revisao'
-import { DocumentoLoteApi, enviarLote } from '@/services/api'
+import { buscarLote, DocumentoLoteApi, enviarLote, reprocessarDocumento } from '@/services/api'
 
 interface Envio {
   chave: number
@@ -88,6 +94,7 @@ interface Envio {
   tamanho: string
   estado: 'enviando' | 'enviado' | 'erro'
   documento: DocumentoLoteApi | null
+  loteId: number | null
   erro: string | null
 }
 
@@ -116,6 +123,7 @@ export default defineComponent({
         const lote = await enviarLote(grupo.map(envio => envio.arquivo))
         lote.documentos.forEach((documento, i) => {
           grupo[i].documento = documento
+          grupo[i].loteId = lote.id
           grupo[i].estado = 'enviado'
         })
       } catch (e) {
@@ -123,6 +131,41 @@ export default defineComponent({
           envio.estado = 'erro'
           envio.erro = (e as Error).message
         })
+      }
+    }
+
+    // A IA lê depois do envio: enquanto houver arquivo na fila ou sendo lido, pergunta de novo.
+    async function atualizarSituacao() {
+      const emLeitura = envios.filter(e => e.documento?.status === 'ENVIADA' || e.documento?.status === 'LENDO')
+      const lotes = Array.from(new Set(emLeitura.map(e => e.loteId)))
+
+      for (const loteId of lotes) {
+        if (loteId === null) continue
+        try {
+          const lote = await buscarLote(loteId)
+          lote.documentos.forEach(documento => {
+            const envio = envios.find(e => e.documento?.id === documento.id)
+            if (envio) envio.documento = documento
+          })
+        } catch {
+          // Sem conexão agora: tenta de novo na próxima rodada.
+        }
+      }
+    }
+
+    let relogio: number | undefined
+    onMounted(() => { relogio = window.setInterval(atualizarSituacao, 4000) })
+    onUnmounted(() => window.clearInterval(relogio))
+
+    async function reprocessar(envio: Envio) {
+      if (!envio.documento) return
+      envio.erro = null
+      try {
+        await reprocessarDocumento(envio.documento.id)
+        envio.documento.status = 'ENVIADA'
+        envio.documento.erro = null
+      } catch (e) {
+        envio.erro = (e as Error).message
       }
     }
 
@@ -138,6 +181,7 @@ export default defineComponent({
           tamanho: tamanhoLegivel(arquivo.size),
           estado: erro ? 'erro' : 'enviando',
           documento: null,
+          loteId: null,
           erro
         }
       })
@@ -159,7 +203,7 @@ export default defineComponent({
     }
 
     return {
-      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar,
+      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, reprocessar,
       status: STATUS_FICHA, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
     }
   }
