@@ -98,12 +98,6 @@ export interface FichaDetalheApi extends FichaResumoApi {
 
 // ---------- Rotas ----------
 
-export function enviarFicha(arquivo: File): Promise<FichaResumoApi> {
-  const formulario = new FormData()
-  formulario.append('file', arquivo)
-  return requisitar<FichaResumoApi>('/fichas', { method: 'POST', body: formulario })
-}
-
 export function listarFichas(status?: StatusFicha): Promise<FichaResumoApi[]> {
   const filtro = status ? `?status=${status}` : ''
   return requisitar<FichaResumoApi[]>(`/fichas${filtro}`)
@@ -132,6 +126,40 @@ export function sinalizarPendenciaFicha(id: string, motivo: string): Promise<voi
 export function recusarFicha(id: string, motivo: string): Promise<void> {
   return enviarJson(`/fichas/${encodeURIComponent(id)}/recusar`, 'POST', { motivo })
 }
+
+// ---------- Upload (lotes) ----------
+
+export interface DocumentoLoteApi {
+  id: number
+  nome: string
+  nomeOriginal: string
+  totalPaginas: number | null
+  fichaId: number | null
+  status: StatusFicha | null
+  erro?: string | null
+}
+
+export interface LoteCriadoApi {
+  id: number
+  codigo: string
+  nome: string
+  documentos: DocumentoLoteApi[]
+}
+
+export function enviarLote(arquivos: File[]): Promise<LoteCriadoApi> {
+  const formulario = new FormData()
+  arquivos.forEach(arquivo => formulario.append('arquivos', arquivo))
+  return requisitar<LoteCriadoApi>('/lotes', { method: 'POST', body: formulario })
+}
+
+export function buscarLote(id: number): Promise<{ documentos: DocumentoLoteApi[] }> {
+  return requisitar(`/lotes/${id}`)
+}
+
+export function reprocessarDocumento(id: number): Promise<unknown> {
+  return requisitar(`/documentos/${id}/reprocessar`, { method: 'POST' })
+}
+
 
 // ---------- Fila de revisão ----------
 
