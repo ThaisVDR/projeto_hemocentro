@@ -32,7 +32,7 @@ export function formatarTipoSanguineo(tipo: TipoSanguineo): string {
  */
 export function lerTipoSanguineo(texto?: string | null): TipoSanguineo | null {
   if (!texto) return null
-  const normalizado = texto.toUpperCase().replace(/\s+/g, '')
+  const normalizado = texto.toUpperCase().replace(/[\s_]+/g, '')
   const encontrado = normalizado.match(/^(AB|A|B|O)(\+|-|POS(ITIVO)?|NEG(ATIVO)?)$/)
   if (!encontrado) return null
   const rh: FatorRh = encontrado[2].startsWith('+') || encontrado[2].startsWith('POS') ? '+' : '-'

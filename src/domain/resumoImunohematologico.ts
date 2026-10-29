@@ -9,11 +9,15 @@ import {
   resumirFenotipo,
   SistemaResumido
 } from './fenotipo'
-import { CodigoRacaCor, formatarRacaCor } from './paciente'
+import { normalizarRaca, traduzirRaca  } from './traducao'
+import { CodigoRacaCor } from './paciente'
 import { doadoresCompativeis, formatarTipoSanguineo, lerTipoSanguineo } from './tipoSanguineo'
 
+
+const ORDEM_RACA = ['BRANCO', 'PRETO', 'PARDO', 'AMARELO', 'INDIGENA']
+
 export interface DadosImunohematologicos {
-  racaCor: CodigoRacaCor | null
+  racaCor: string  | null
   aboRh: string | null
   fenotipo: Fenotipo
   anticorpos: string[]
@@ -33,8 +37,8 @@ export interface ResumoImunohematologico {
 }
 
 export function lerCodigoRacaCor(valor?: string | null): CodigoRacaCor | null {
-  const codigo = Number(valor)
-  return codigo >= 1 && codigo <= 5 ? (codigo as CodigoRacaCor) : null
+  const chave = normalizarRaca(valor)
+  return chave ? ((ORDEM_RACA.indexOf(chave) + 1) as CodigoRacaCor) : null
 }
 
 /**
@@ -59,7 +63,7 @@ export function montarResumoImunohematologico(dados: DadosImunohematologicos): R
   const anticorpos = Array.from(new Set(dados.anticorpos))
 
   return {
-    racaCor: formatarRacaCor(dados.racaCor),
+    racaCor: traduzirRaca(normalizarRaca(dados.racaCor)),
     tipoSanguineo: tipo ? formatarTipoSanguineo(tipo) : null,
     tipoNaoInterpretado: tipo ? null : dados.aboRh,
     sistemas: resumirFenotipo(dados.fenotipo),
