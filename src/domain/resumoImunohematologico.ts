@@ -9,12 +9,9 @@ import {
   resumirFenotipo,
   SistemaResumido
 } from './fenotipo'
-import { normalizarRaca, traduzirRaca  } from './traducao'
+import { normalizarRaca, ORDEM_RACA, traduzirRaca } from './traducao'
 import { CodigoRacaCor } from './paciente'
 import { doadoresCompativeis, formatarTipoSanguineo, lerTipoSanguineo } from './tipoSanguineo'
-
-
-const ORDEM_RACA = ['BRANCO', 'PRETO', 'PARDO', 'AMARELO', 'INDIGENA']
 
 export interface DadosImunohematologicos {
   racaCor: string  | null

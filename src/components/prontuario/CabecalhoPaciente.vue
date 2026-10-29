@@ -48,9 +48,9 @@
         <dd>{{ paciente.municipio || 'Não informado' }}</dd>
       </div>
       <div>
-      <dt>Sexo</dt>
-         <dd>{{ traduzirSexo(paciente.sexo) }}</dd>
-        </div>
+        <dt>Sexo</dt>
+        <dd>{{ traduzirSexo(paciente.sexo) }}</dd>
+      </div>
     </dl>
 
     <p v-if="paciente.ultimaValidacao" class="cabecalho__validacao">
@@ -61,7 +61,7 @@
 </template>
 
 <script lang="ts">
-import { traduzirAboRh, traduzirRaca, traduzirSexo  } from '@/domain/traducao'
+import { traduzirAboRh, traduzirRaca, traduzirSexo } from '@/domain/traducao'
 import { computed, defineComponent, PropType } from 'vue'
 import { CheckCircle } from 'lucide-vue-next'
 import { PacienteDetalheApi } from '@/services/api'
