@@ -1,6 +1,3 @@
-import { formatarRacaCor } from '@/domain/paciente'
-import { lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
-
 export function formatarData(iso?: string | null): string {
   if (!iso) return ''
   const encontrado = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -20,13 +17,6 @@ export function dataBrasileiraParaIso(texto: string): string {
 
   return existe ? `${ano}-${mes}-${dia}` : ''
 }
-
-export function textoRacaCor(valor: string | null): string {
-  const codigo = lerCodigoRacaCor(valor)
-  if (codigo) return formatarRacaCor(codigo)
-  return valor || 'Não informada'
-}
-
 export function iniciais(nomeCompleto: string): string {
   const palavras = nomeCompleto.trim().split(' ').filter(palavra => palavra !== '')
   const primeira = palavras[0]

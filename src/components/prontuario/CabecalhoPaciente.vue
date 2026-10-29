@@ -11,12 +11,12 @@
     <dl class="destaques">
       <div class="destaque destaque--raca">
         <dt>Raça/cor</dt>
-        <dd>{{ textoRacaCor(paciente.racaCor) }}</dd>
+        <dd>{{ traduzirRaca(paciente.racaCor) }}</dd>
       </div>
 
       <div class="destaque">
         <dt>Grupo ABO/Rh</dt>
-        <dd>{{ paciente.aboRh || 'Não informado' }}</dd>
+        <dd>{{ traduzirAboRh(paciente.aboRh) }}</dd>
       </div>
 
       <div class="destaque destaque--antigenos">
@@ -47,6 +47,10 @@
         <dt>Município</dt>
         <dd>{{ paciente.municipio || 'Não informado' }}</dd>
       </div>
+      <div>
+      <dt>Sexo</dt>
+         <dd>{{ traduzirSexo(paciente.sexo) }}</dd>
+        </div>
     </dl>
 
     <p v-if="paciente.ultimaValidacao" class="cabecalho__validacao">
@@ -57,10 +61,11 @@
 </template>
 
 <script lang="ts">
+import { traduzirAboRh, traduzirRaca, traduzirSexo  } from '@/domain/traducao'
 import { computed, defineComponent, PropType } from 'vue'
 import { CheckCircle } from 'lucide-vue-next'
 import { PacienteDetalheApi } from '@/services/api'
-import { calcularIdade, formatarData, iniciais, textoRacaCor } from '@/utils/formatacao'
+import { calcularIdade, formatarData, iniciais } from '@/utils/formatacao'
 
 export default defineComponent({
   name: 'CabecalhoPaciente',
@@ -86,7 +91,7 @@ export default defineComponent({
         : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     }
 
-    return { resumo, dataHora, iniciais, textoRacaCor, formatarData }
+    return { resumo, dataHora, iniciais, traduzirRaca, traduzirAboRh, traduzirSexo, formatarData }
   }
 })
 </script>

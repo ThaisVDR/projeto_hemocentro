@@ -136,7 +136,7 @@ h4 {
 
 .resumo__destaques {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin: 0;
 }

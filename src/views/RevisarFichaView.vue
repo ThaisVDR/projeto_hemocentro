@@ -103,8 +103,10 @@
               <tbody>
                 <tr v-for="(linha, indice) in ficha.transfusoes" :key="indice">
                   <td>
-                    <CampoData v-model="linha.dataEnvio"
-                      @update:model-value="marcarEditado(ficha.transfusoesConferencia)" />
+                    <CampoData
+                      :model-value="linha.dataEnvio ?? undefined"
+                      @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }"
+                    />
                   </td>
                   <td><input v-model="linha.tipoHemocomponente" class="curto"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
@@ -227,7 +229,10 @@
               <tbody>
                 <tr v-for="(anticorpo, indice) in ih.anticorpos" :key="indice">
                   <td>
-                    <CampoData v-model="anticorpo.data" @update:model-value="marcarEditado(ih.anticorposConferencia)" />
+                    <CampoData
+                      :model-value="anticorpo.data ?? undefined"
+                      @update:model-value="valor => { anticorpo.data = valor ?? undefined; marcarEditado(ih.anticorposConferencia) }"
+                    />
                   </td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
@@ -307,17 +312,17 @@ import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/Docume
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
 import { fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
-import { RACA_COR } from '@/domain/paciente'
-import { DadosImunohematologicos, lerCodigoRacaCor } from '@/domain/resumoImunohematologico'
+import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
 } from '@/domain/revisao'
-import { formatarTipoSanguineo, TIPOS_SANGUINEOS } from '@/domain/tipoSanguineo'
 import {
   aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoFicha
 } from '@/services/api'
 import CampoData from '@/components/CampoData.vue'
+import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
+
 
 interface Mensagem {
   tipo: 'sucesso' | 'info' | 'alerta'
@@ -417,7 +422,7 @@ export default defineComponent({
       const fator = dados.fatorRh.valor === 'Positivo' ? '+' : dados.fatorRh.valor === 'Negativo' ? '-' : ''
       const grupoDaPagina4 = dados.grupoSanguineo.valor ? `${dados.grupoSanguineo.valor}${fator}` : null
       return {
-        racaCor: lerCodigoRacaCor(ficha.identificacao.racaCor.valor),
+        racaCor: ficha.identificacao.racaCor.valor,
         aboRh: ficha.identificacao.aboRh.valor ?? grupoDaPagina4,
         fenotipo: dados.fenotipo,
         anticorpos: [
@@ -538,11 +543,11 @@ export default defineComponent({
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
       opcoesTeste: RESULTADOS_TESTE,
-      opcoesRacaCor: Object.entries(RACA_COR).map(([codigo, nome]) => ({ valor: codigo, rotulo: `${codigo} — ${nome}` })),
-      opcoesAboRh: TIPOS_SANGUINEOS.map(t => ({ valor: formatarTipoSanguineo(t), rotulo: formatarTipoSanguineo(t) })),
+      opcoesRacaCor: OPCOES_RACA,
+      opcoesAboRh: OPCOES_ABO_RH,
       opcoesGrupo: ['A', 'B', 'AB', 'O'].map(g => ({ valor: g, rotulo: g })),
       opcoesPositivoNegativo: ['Positivo', 'Negativo'].map(v => ({ valor: v, rotulo: v })),
-      opcoesSexo: [{ valor: 'F', rotulo: 'F — Feminino' }, { valor: 'M', rotulo: 'M — Masculino' }]
+      opcoesSexo: OPCOES_SEXO
     }
   }
 })

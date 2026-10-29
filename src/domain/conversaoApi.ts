@@ -1,28 +1,13 @@
 import { FichaDetalheApi } from '@/services/api'
+import { normalizarAboRh, normalizarRaca } from './traducao'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
-import { RACA_COR } from './paciente'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
 import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste } from './revisao'
-import { formatarTipoSanguineo, lerTipoSanguineo } from './tipoSanguineo'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
   campo.valor = String(valor)
   campo.estado = 'sugerido'
-}
-
-/** Aceita "1", "1 - Branco" ou "Branco" e devolve o código 1–5 como texto. */
-function codigoRacaCor(texto: string | null): string | null {
-  if (!texto) return null
-  const codigo = lerCodigoRacaCor(texto.match(/[1-5]/)?.[0])
-  if (codigo) return String(codigo)
-  const porNome = Object.entries(RACA_COR).find(([, nome]) => texto.toLowerCase().includes(nome.toLowerCase()))
-  return porNome ? porNome[0] : texto
-}
-
-function textoAboRh(texto: string | null): string | null {
-  const tipo = lerTipoSanguineo(texto)
-  return tipo ? formatarTipoSanguineo(tipo) : texto
 }
 
 function textoFatorRh(texto: string | null): string | null {
@@ -64,8 +49,8 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   sugerir(id.nome, p.nome)
   sugerir(id.dataNascimento, p.dataNascimento)
   sugerir(id.prontuario, p.prontuario)
-  sugerir(id.racaCor, codigoRacaCor(p.racaCor))
-  sugerir(id.aboRh, textoAboRh(p.aboRh))
+  sugerir(id.racaCor, normalizarRaca(p.racaCor) ?? p.racaCor)
+  sugerir(id.aboRh, normalizarAboRh(p.aboRh) ?? p.aboRh)
   sugerir(id.diagnostico, p.diagnostico)
   sugerir(id.nomeMae, p.nomeMae)
 

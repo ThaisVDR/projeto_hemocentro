@@ -52,8 +52,8 @@
               </span>
 
               <span class="resultado__destaques">
-                <span class="selo selo--perigo">{{ textoRacaCor(paciente.racaCor) }}</span>
-                <span class="selo selo--neutro">{{ paciente.aboRh || 'ABO/Rh não informado' }}</span>
+                <span class="selo selo--perigo">{{ traduzirRaca(paciente.racaCor) }}</span>
+                <span class="selo selo--neutro">{{ traduzirAboRh(paciente.aboRh) }}</span>
               </span>
 
               <ChevronRight :size="18" class="resultado__seta" />
@@ -75,12 +75,13 @@
 
 
 <script lang="ts">
+import { traduzirAboRh, traduzirRaca } from '@/domain/traducao'
 import PageHeader from '@/components/PageHeader.vue'
 import { computed, defineComponent, ref, watch } from 'vue'
 import CampoData from '@/components/CampoData.vue'
 import { buscarPaciente, buscarPacientes, PacienteDetalheApi, PacienteResumoApi } from '@/services/api'
 import { ChevronRight, ArrowLeft } from 'lucide-vue-next'
-import { formatarData, textoRacaCor, iniciais } from '@/utils/formatacao'
+import { formatarData, iniciais } from '@/utils/formatacao'
 import { useRoute } from 'vue-router'
 import CabecalhoPaciente from '@/components/prontuario/CabecalhoPaciente.vue'
 import PerfilTransfusional from '@/components/prontuario/PerfilTransfusional.vue'
@@ -137,7 +138,7 @@ export default defineComponent({
     watch(pacienteId, carregarPaciente, { immediate: true })
 
 
-    return { nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, textoRacaCor, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
+    return { traduzirAboRh ,traduzirRaca, nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
 }
 });
 
