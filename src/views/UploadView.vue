@@ -52,19 +52,19 @@
             <td><strong>{{ envio.nome }}</strong></td>
             <td>{{ envio.tamanho }}</td>
             <td>
-              <span v-if="envio.estado === 'enviando'" class="selo selo--info">Enviando e lendo com IA…</span>
+              <span v-if="envio.estado === 'enviando'" class="selo selo--info">Enviando…</span>
               <span v-else-if="envio.estado === 'erro'" class="selo selo--perigo" :title="envio.erro">Falhou</span>
-              <span v-else-if="envio.ficha" class="selo" :class="status[envio.ficha.status].classe">
-                {{ status[envio.ficha.status].rotulo }}
+              <span v-else-if="envio.documento?.status" class="selo" :class="status[envio.documento.status].classe">
+                {{ status[envio.documento.status].rotulo }}
               </span>
               <small v-if="envio.erro" class="erro">{{ envio.erro }}</small>
             </td>
             <td>
-              <router-link v-if="envio.ficha && envio.ficha.status !== 'ENVIADA' && envio.ficha.status !== 'LENDO'"
-                :to="{ name: 'revisar', params: { fichaId: envio.ficha.id } }" class="link">
+              <router-link v-if="envio.documento?.status === 'AGUARDANDO_REVISAO'"
+                :to="{ name: 'revisar', params: { fichaId: envio.documento.fichaId } }" class="link">
                 Revisar →
               </router-link>
-              <button v-else-if="envio.estado === 'erro'" type="button" class="link" @click="enviar(envio)">Tentar de
+              <button v-else-if="envio.estado === 'erro'" type="button" class="link" @click="enviarGrupo([envio])">Tentar de
                 novo</button>
             </td>
           </tr>
@@ -79,7 +79,7 @@ import { defineComponent, reactive, ref } from 'vue'
 import { ListChecks, Plus, UploadCloud } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA } from '@/domain/revisao'
-import { enviarFicha, FichaResumoApi } from '@/services/api'
+import { DocumentoLoteApi, enviarLote } from '@/services/api'
 
 interface Envio {
   chave: number
@@ -87,12 +87,12 @@ interface Envio {
   nome: string
   tamanho: string
   estado: 'enviando' | 'enviado' | 'erro'
-  ficha: FichaResumoApi | null
+  documento: DocumentoLoteApi | null
   erro: string | null
 }
 
 // Mesmo limite e tipos aceitos pelo backend (src/config/upload.config.ts).
-const LIMITE_MB = 20
+const LIMITE_MB = 50
 const TIPOS = ['application/pdf', 'image/jpeg', 'image/png']
 
 export default defineComponent({
@@ -107,15 +107,22 @@ export default defineComponent({
       return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`
     }
 
-    async function enviar(envio: Envio) {
-      envio.estado = 'enviando'
-      envio.erro = null
+    async function enviarGrupo(grupo: Envio[]) {
+      grupo.forEach(envio => {
+        envio.estado = 'enviando'
+        envio.erro = null
+      })
       try {
-        envio.ficha = await enviarFicha(envio.arquivo)
-        envio.estado = 'enviado'
-      } catch (erro) {
-        envio.estado = 'erro'
-        envio.erro = (erro as Error).message
+        const lote = await enviarLote(grupo.map(envio => envio.arquivo))
+        lote.documentos.forEach((documento, i) => {
+          grupo[i].documento = documento
+          grupo[i].estado = 'enviado'
+        })
+      } catch (e) {
+        grupo.forEach(envio => {
+          envio.estado = 'erro'
+          envio.erro = (e as Error).message
+        })
       }
     }
 
@@ -130,15 +137,14 @@ export default defineComponent({
           nome: arquivo.name,
           tamanho: tamanhoLegivel(arquivo.size),
           estado: erro ? 'erro' : 'enviando',
-          ficha: null,
+          documento: null,
           erro
         }
       })
       envios.unshift(...novos)
-      // Um envio por vez: cada ficha passa pela IA no backend.
-      for (const envio of envios.filter(e => novos.some(n => n.chave === e.chave) && e.estado === 'enviando')) {
-        await enviar(envio)
-      }
+      // Todos os arquivos válidos vão juntos, num único lote.
+      const validos = envios.filter(e => novos.some(n => n.chave === e.chave) && e.estado === 'enviando')
+      if (validos.length) await enviarGrupo(validos)
     }
 
     function aoEscolher(evento: Event) {
@@ -153,7 +159,7 @@ export default defineComponent({
     }
 
     return {
-      envios, arrastando, enviar, aoEscolher, aoSoltar,
+      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar,
       status: STATUS_FICHA, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
     }
   }
