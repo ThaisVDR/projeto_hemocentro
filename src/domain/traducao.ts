@@ -62,7 +62,7 @@ export const OPCOES_RACA: Opcao[] = paraOpcoes(ROTULO_RACA)
 export const OPCOES_SEXO: Opcao[] = paraOpcoes(ROTULO_SEXO)
 export const OPCOES_ABO_RH: Opcao[] = paraOpcoes(ROTULO_ABO_RH)
 
-const ORDEM_RACA: RacaApi[] = ['BRANCO', 'PRETO', 'PARDO', 'AMARELO', 'INDIGENA']
+export const ORDEM_RACA: RacaApi[] = ['BRANCO', 'PRETO', 'PARDO', 'AMARELO', 'INDIGENA']
 
 export function normalizarRaca(valor?: string | null): RacaApi | null {
   if (!valor) return null
