@@ -323,7 +323,7 @@ import CampoRevisao from '@/components/revisao/CampoRevisao.vue'
 import ConferenciaTabela from '@/components/revisao/ConferenciaTabela.vue'
 import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/DocumentoOriginal.vue'
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
-import { alteracoesDaIdentificacao, fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
+import { alteracoesDaIdentificacao, alteracoesDasTransfusoes, fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
@@ -565,9 +565,12 @@ export default defineComponent({
 
     async function salvarRascunho() {
       if (!original.value) return
-      const alteracoes = alteracoesDaIdentificacao(original.value, ficha)
+      const alteracoes = [
+        ...alteracoesDaIdentificacao(original.value, ficha),
+        ...alteracoesDasTransfusoes(original.value.transfusoes, ficha.transfusoes)
+      ]
       if (alteracoes.length === 0) {
-        mensagem.value = { tipo: 'info', texto: 'Nenhum campo da identificação foi alterado desde o último salvamento.' }
+        mensagem.value = { tipo: 'info', texto: 'Nada foi alterado desde o último salvamento.' }
         return
       }
       const ok = await executar(

@@ -130,7 +130,7 @@ export function assumirRevisao(id: string, justificativa: string | null): Promis
 // Uma correção: "campo" é o caminho no dado lido pela IA, ex.: "paciente.sexo".
 export interface AlteracaoApi {
   campo: string
-  valor: string | number | null
+  valor: unknown
 }
 
 export function salvarAlteracoes(id: string, alteracoes: AlteracaoApi[]): Promise<FichaDetalheApi> {
@@ -139,10 +139,6 @@ export function salvarAlteracoes(id: string, alteracoes: AlteracaoApi[]): Promis
 
 export function urlArquivoDocumento(documentoId: number): string {
   return `${API_URL}/documentos/${documentoId}/arquivo`
-}
-
-export function salvarRascunhoFicha(id: string, revisao: unknown): Promise<void> {
-  return enviarJson(`/fichas/${encodeURIComponent(id)}`, 'PUT', { revisao })
 }
 
 export function aprovarFicha(id: string, dados: unknown): Promise<void> {

@@ -2,7 +2,7 @@ import { AlteracaoApi, FichaDetalheApi } from '@/services/api'
 import { normalizarAboRh, normalizarRaca, traduzirAboRh } from './traducao'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste } from './revisao'
+import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste, TransfusaoRevisao } from './revisao'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
@@ -116,6 +116,53 @@ export function alteracoesDaIdentificacao(antes: FichaEmRevisao, agora: FichaEmR
         valor: campo === 'prontuario' && texto ? Number(texto) : texto
       }
     })
+}
+
+// Uma linha da tabela de envios no formato do backend (TransfusaoExtraida).
+function transfusaoParaApi(t: TransfusaoRevisao) {
+  const [cidade, uf] = (t.destino ?? '').split('/').map(parte => parte.trim())
+  return {
+    dataEnvio: t.dataEnvio || null,
+    tipoHemocomponente: t.tipoHemocomponente || null,
+    numeroDoacao: t.numeroDoacao || null,
+    grsRhd: normalizarAboRh(t.grsRhd) ?? (t.grsRhd || null),
+    volMl: t.volMl ? Number(t.volMl) : null,
+    testesPai: t.testesPai || null,
+    provaCruzada: t.provaCruzada || null,
+    cidadeDestino: cidade || null,
+    ufDestino: uf || null,
+    responsavelLiberacao: t.responsavelLiberacao || null
+  }
+}
+
+function linhaPreenchida(t: TransfusaoRevisao): boolean {
+  return Object.values(t).some(valor => valor !== null && valor !== '')
+}
+
+// Compara as linhas uma a uma: campo corrigido, linha nova no fim ou linha removida.
+export function alteracoesDasTransfusoes(antes: TransfusaoRevisao[], agora: TransfusaoRevisao[]): AlteracaoApi[] {
+  const linhasAntes = antes.filter(linhaPreenchida)
+  const linhasAgora = agora.filter(linhaPreenchida)
+  const alteracoes: AlteracaoApi[] = []
+
+  linhasAgora.forEach((linha, i) => {
+    const nova = transfusaoParaApi(linha)
+    if (i >= linhasAntes.length) {
+      alteracoes.push({ campo: `transfusoes[${i}]`, valor: { ...nova, numeroServico: null, tracejador: null, pagina: 1 } })
+      return
+    }
+    const velha = transfusaoParaApi(linhasAntes[i])
+    for (const chave of Object.keys(nova) as (keyof typeof nova)[]) {
+      if (nova[chave] !== velha[chave]) {
+        alteracoes.push({ campo: `transfusoes[${i}].${chave}`, valor: nova[chave] })
+      }
+    }
+  })
+
+  for (let i = linhasAntes.length - 1; i >= linhasAgora.length; i--) {
+    alteracoes.push({ campo: `transfusoes[${i}]`, valor: null })
+  }
+  return alteracoes
 }
 
 function valor(campo: CampoRevisavel): string | null {
