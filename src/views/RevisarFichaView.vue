@@ -158,7 +158,10 @@
                       </option>
                     </select>
                   </td>
-                  <td><input v-model="linha.destino" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td>
+                    <CampoCidade v-model="linha.destino"
+                      @update:model-value="marcarEditado(ficha.transfusoesConferencia)" />
+                  </td>
                   <td>
                     <CampoColaborador v-model="linha.responsavelLiberacao"
                       @update:model-value="marcarEditado(ficha.transfusoesConferencia)" />
@@ -364,6 +367,7 @@ import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import { avisar } from '@/composables/useAvisos'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
+import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
@@ -384,7 +388,7 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador, LegendaEstados
+    CampoColaborador, CampoCidade, LegendaEstados
   },
   setup() {
     const rota = useRoute()
