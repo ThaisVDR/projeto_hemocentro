@@ -22,12 +22,6 @@
       </router-link>
     </nav>
 
-    <div class="menu__acervo">
-      <p>Acervo em papel</p>
-      <strong>≈ 850</strong>
-      <small>pacientes ativos previstos na base do projeto</small>
-    </div>
-
     <div class="menu__rodape">
       <a class="menu__item" href="#"><CircleHelp :size="16" /> Guia de conferência</a>
     </div>
@@ -137,29 +131,6 @@ export default defineComponent({
 .menu__item--ativo {
   background: var(--cor-primaria-suave);
   color: var(--cor-primaria);
-}
-
-.menu__acervo {
-  margin-top: 24px;
-  padding: 14px 12px;
-  border-radius: var(--raio);
-  background: var(--cor-fundo);
-}
-
-.menu__acervo p {
-  margin: 0 0 6px;
-  font-size: 12px;
-}
-
-.menu__acervo strong {
-  display: block;
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.menu__acervo small {
-  font-size: 11px;
-  color: var(--cor-texto-suave);
 }
 
 .menu__rodape {
