@@ -271,8 +271,7 @@
             <CampoRevisao :campo="ih.metodologia" v-bind="eventos(ih.metodologia)" />
             <CampoRevisao :campo="ih.dataExame" tipo="date" v-bind="eventos(ih.dataExame)" />
             <CampoRevisao :campo="ih.solicitante" v-bind="eventos(ih.solicitante)" />
-            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico"
-              v-bind="eventos(ih.responsavelTecnico)" />
+            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico" tipo="colaborador" v-bind="eventos(ih.responsavelTecnico)" />
           </div>
         </SecaoRevisao>
       </div>

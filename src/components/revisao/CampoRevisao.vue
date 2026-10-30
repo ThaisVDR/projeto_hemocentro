@@ -25,6 +25,14 @@
         @update:model-value="$emit('atualizar', $event)"
         @focus="$emit('foco', campo.pagina)"
       />
+
+      <CampoColaborador
+        v-else-if="tipo === 'colaborador'"
+        :model-value="campo.valor"
+        @update:model-value="$emit('atualizar', $event)"
+        @focusin="$emit('foco', campo.pagina)"
+      />
+
       <input
         v-else
         :id="id"
@@ -72,6 +80,7 @@ import { computed, defineComponent, PropType } from 'vue'
 import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles, Undo2 } from 'lucide-vue-next'
 import { CampoRevisavel } from '@/domain/revisao'
 import CampoData from '@/components/CampoData.vue'
+import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 
 export interface OpcaoCampo {
   valor: string
@@ -82,7 +91,7 @@ let contador = 0
 
 export default defineComponent({
   name: 'CampoRevisao',
-  components: { Check, Minus, Undo2, CampoData },
+  components: { Check, Minus, Undo2, CampoData, CampoColaborador },
   props: {
     campo: { type: Object as PropType<CampoRevisavel>, required: true },
     tipo: { type: String, default: 'text' },
@@ -216,4 +225,9 @@ export default defineComponent({
 .campo--incerto .campo__nota {
   color: var(--cor-alerta);
 }
+
+.campo__controle > .campo-colaborador {
+  flex: 1;
+}
 </style>
+
