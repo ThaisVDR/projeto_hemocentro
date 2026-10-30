@@ -7,11 +7,13 @@
       placeholder="Digite 2 letras…"
       @input="aoDigitar"
       @change="usarGrafiaCadastrada"
+      @focus="emFoco = true"
+      @blur="emFoco = false"
     />
     <datalist :id="idLista">
       <option v-for="colaborador in sugestoes" :key="colaborador.id" :value="colaborador.nome" />
     </datalist>
-    <button v-if="podeCadastrar" type="button" class="campo-colaborador__cadastrar" :disabled="cadastrando"
+    <button v-if="podeCadastrar && !emFoco" type="button" class="campo-colaborador__cadastrar" :disabled="cadastrando"
       @click="cadastrar">
       + Cadastrar
     </button>
@@ -36,6 +38,8 @@ export default defineComponent({
     const sugestoes = ref<ColaboradorApi[]>([])
     const cadastrando = ref(false)
     const erro = ref<string | null>(null)
+    // O "+ Cadastrar" só aparece depois que a pessoa sai do campo, para não cadastrar um nome pela metade.
+    const emFoco = ref(false)
     let espera: number | undefined
 
     const nomeDigitado = computed(() => (props.modelValue ?? '').trim())
@@ -90,7 +94,7 @@ export default defineComponent({
       }
     }
 
-    return { idLista, sugestoes, cadastrando, erro, podeCadastrar, aoDigitar, cadastrar, usarGrafiaCadastrada }
+    return { idLista, sugestoes, cadastrando, erro, emFoco, podeCadastrar, aoDigitar, cadastrar, usarGrafiaCadastrada }
   }
 })
 </script>

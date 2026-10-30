@@ -11,6 +11,7 @@
         <span>Conferência humana obrigatória</span>
       </footer>
     </div>
+    <AvisosFlutuantes />
   </div>
 </template>
 
@@ -18,10 +19,11 @@
 import { defineComponent } from 'vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppTopbar from '@/components/layout/AppTopbar.vue'
+import AvisosFlutuantes from '@/components/layout/AvisosFlutuantes.vue'
 
 export default defineComponent({
   name: 'AppLayout',
-  components: { AppSidebar, AppTopbar }
+  components: { AppSidebar, AppTopbar, AvisosFlutuantes }
 })
 </script>
 

@@ -2,7 +2,9 @@
   <div class="campo" :class="`campo--${campo.estado}`">
     <div class="campo__rotulo">
       <label :for="id">{{ campo.rotulo }}</label>
-      <component :is="icone" :size="14" class="campo__icone" />
+      <span class="campo__icone" :title="descricaoEstado">
+        <component :is="icone" :size="14" />
+      </span>
     </div>
 
     <div class="campo__controle">
@@ -46,9 +48,10 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles, Undo2 } from 'lucide-vue-next'
+import { Check, Minus, Undo2 } from 'lucide-vue-next'
 import { CampoRevisavel } from '@/domain/revisao'
 import CampoData from '@/components/CampoData.vue'
+import { estadoCampo } from './estadosCampo'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 
 export interface OpcaoCampo {
@@ -70,14 +73,8 @@ export default defineComponent({
   setup(props, { emit }) {
     const id = `campo-${++contador}`
 
-    const icone = computed(() => ({
-      vazio: Circle,
-      conferido: Check,
-      editado: Pencil,
-      incerto: AlertCircle,
-      sugerido: Sparkles,
-      nao_consta: Minus
-    })[props.campo.estado])
+    const icone = computed(() => estadoCampo(props.campo.estado).icone)
+    const descricaoEstado = computed(() => estadoCampo(props.campo.estado).rotulo)
 
     const nota = computed(() => {
       const pagina = `p. ${props.campo.pagina}`
@@ -99,7 +96,7 @@ export default defineComponent({
       emit('atualizar', (evento.target as HTMLInputElement | HTMLSelectElement).value)
     }
 
-    return { id, icone, nota, podeConfirmar, aoAlterar }
+    return { id, icone, descricaoEstado, nota, podeConfirmar, aoAlterar }
   }
 })
 </script>
@@ -121,7 +118,9 @@ export default defineComponent({
 }
 
 .campo__icone {
+  display: inline-flex;
   color: var(--cor-texto-fraco);
+  cursor: help;
 }
 
 .campo--conferido .campo__icone,

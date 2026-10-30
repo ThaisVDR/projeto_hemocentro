@@ -63,8 +63,16 @@
             (DiaCell, DiaPanel, fenotipagem) devem ser transcritos literalmente: nt, NR e vazio não são negativo.
           </span>
         </div>
+        <LegendaEstados />
 
-        <SecaoRevisao titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
+        <nav class="indice" aria-label="Seções da ficha">
+          <button v-for="item in indiceSecoes" :key="item.numero" type="button" class="indice__item"
+            @click="irParaSecao(item.numero)">
+            <span>{{ item.numero }}</span> {{ item.titulo }}
+          </button>
+        </nav>
+
+        <SecaoRevisao :numero="1" titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
           <div class="grade">
             <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nome"
               v-bind="eventos(ficha.identificacao.nome)" />
@@ -97,7 +105,7 @@
           </div>
         </SecaoRevisao>
 
-        <SecaoRevisao titulo="Ficha transfusional" :pagina="1"
+        <SecaoRevisao :numero="2" titulo="Ficha transfusional" :pagina="1"
           subtitulo="Uma linha por envio de hemocomponente. NR = não realizado, não significa negativo."
           etiqueta="Registro transfusional">
           <div class="tabela-rolavel" @focusin="pagina = 1">
@@ -122,10 +130,18 @@
                     <CampoData :model-value="linha.dataEnvio ?? undefined"
                       @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }" />
                   </td>
-                  <td><input v-model="linha.tipoHemocomponente" class="curto"
+                  <td><input v-model="linha.tipoHemocomponente" class="curto" list="hemocomponentes"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.numeroDoacao" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.grsRhd" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td>
+                    <select v-model="linha.grsRhd" @change="marcarEditado(ficha.transfusoesConferencia)">
+                      <option :value="null">—</option>
+                      <option v-if="linha.grsRhd && !gruposRh.includes(linha.grsRhd)" :value="linha.grsRhd">
+                        {{ linha.grsRhd }}
+                      </option>
+                      <option v-for="grupo in gruposRh" :key="grupo" :value="grupo">{{ grupo }}</option>
+                    </select>
+                  </td>
                   <td><input v-model="linha.volMl" class="curto" inputmode="numeric"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td>
@@ -155,6 +171,9 @@
                 </tr>
               </tbody>
             </table>
+            <datalist id="hemocomponentes">
+              <option v-for="tipo in hemocomponentes" :key="tipo" :value="tipo" />
+            </datalist>
           </div>
           <button type="button" class="botao botao--leve" @click="adicionarTransfusao">
             <Plus :size="14" /> Adicionar envio
@@ -164,7 +183,7 @@
             @desfazer="desfazerConferencia(ficha.transfusoesConferencia)" />
         </SecaoRevisao>
 
-        <SecaoRevisao v-for="pesquisa in ficha.pesquisas" :key="pesquisa.documento"
+        <SecaoRevisao v-for="(pesquisa, i) in ficha.pesquisas" :key="pesquisa.documento" :numero="i + 3"
           :titulo="pesquisa.documento === 'ID-DiaPanel' ? 'Identificação de anticorpos' : 'Pesquisa de anticorpos irregulares'"
           :pagina="pesquisa.pagina"
           :subtitulo="`${pesquisa.documento} • matriz de antígenos do reagente vinculada ao lote do kit, não precisa ser transcrita`"
@@ -203,7 +222,7 @@
             @desfazer="desfazerConferencia(pesquisa.reacoesConferencia)" />
         </SecaoRevisao>
 
-        <SecaoRevisao titulo="Pesquisa imuno-hematológica" :pagina="4"
+        <SecaoRevisao :numero="ficha.pesquisas.length + 3" titulo="Pesquisa imuno-hematológica" :pagina="4"
           subtitulo="Grupo, fator Rh, anticorpos irregulares, TAD e fenotipagem eritrocitária"
           etiqueta="Resultados laboratoriais">
           <div class="grade">
@@ -343,8 +362,10 @@ import {
 } from '@/services/api'
 import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
+import { avisar } from '@/composables/useAvisos'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
-import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
+import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
+import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
 
 interface Mensagem {
@@ -363,7 +384,7 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador
+    CampoColaborador, LegendaEstados
   },
   setup() {
     const rota = useRoute()
@@ -399,6 +420,25 @@ export default defineComponent({
     )
 
     const statusFicha = computed(() => STATUS_FICHA[ficha.status])
+
+    // Mini-índice: mesma numeração das seções, para pular direto para uma delas.
+    const indiceSecoes = computed(() => [
+      { numero: 1, titulo: 'Identificação' },
+      { numero: 2, titulo: 'Ficha transfusional' },
+      ...ficha.pesquisas.map((pesquisa, i) => ({ numero: i + 3, titulo: pesquisa.documento })),
+      { numero: ficha.pesquisas.length + 3, titulo: 'Pesquisa imuno-hematológica' }
+    ])
+
+    // Sugestões de hemocomponente: siglas comuns + as que já aparecem nesta ficha (o campo continua livre).
+    const SIGLAS_HEMOCOMPONENTE = ['CH', 'CHD', 'CHDF', 'CHF', 'CHI', 'CP', 'CPAF', 'PFC', 'CRIO']
+    const hemocomponentes = computed(() => Array.from(new Set([
+      ...SIGLAS_HEMOCOMPONENTE,
+      ...ficha.transfusoes.map(t => t.tipoHemocomponente?.trim().toUpperCase()).filter((t): t is string => !!t)
+    ])))
+
+    function irParaSecao(numero: number) {
+      document.getElementById(`secao-${numero}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
 
     function trocarArquivo(novo: ArquivoDocumento | null) {
       if (arquivo.value?.url.startsWith('blob:')) URL.revokeObjectURL(arquivo.value.url)
@@ -444,9 +484,9 @@ export default defineComponent({
         const resposta = await iniciarRevisao(fichaId.value)
         ficha.status = resposta.status
         revisor.value = resposta.revisor
-        mensagem.value = { tipo: 'sucesso', texto: 'Revisão iniciada. A ficha agora está com você.' }
+        avisar('sucesso', 'Revisão iniciada. A ficha agora está com você.')
       } catch (e) {
-        mensagem.value = { tipo: 'alerta', texto: (e as Error).message }
+        avisar('erro', (e as Error).message)
       } finally {
         salvando.value = false
       }
@@ -462,9 +502,9 @@ export default defineComponent({
       try {
         const resposta = await assumirRevisao(fichaId.value, justificativa.trim() || null)
         revisor.value = resposta.revisor
-        mensagem.value = { tipo: 'sucesso', texto: 'Você assumiu a revisão desta ficha.' }
+        avisar('sucesso', 'Você assumiu a revisão desta ficha.')
       } catch (e) {
-        mensagem.value = { tipo: 'alerta', texto: (e as Error).message }
+        avisar('erro', (e as Error).message)
       } finally {
         salvando.value = false
       }
@@ -549,20 +589,17 @@ export default defineComponent({
     // Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar.
     async function executar(acao: (id: string) => Promise<unknown>, sucesso: Mensagem) {
       if (!fichaId.value) {
-        mensagem.value = {
-          tipo: 'alerta',
-          texto: 'Esta ficha não foi enviada pela tela de Upload, então ainda não existe no banco. ' +
-            'Envie o arquivo pelo Upload: ele passa pela IA e aparece na fila de revisão.'
-        }
+        avisar('erro', 'Esta ficha não foi enviada pela tela de Upload, então ainda não existe no banco. ' +
+          'Envie o arquivo pelo Upload: ele passa pela IA e aparece na fila de revisão.')
         return false
       }
       salvando.value = true
       try {
         await acao(fichaId.value)
-        mensagem.value = sucesso
+        avisar(sucesso.tipo, sucesso.texto)
         return true
       } catch (erro) {
-        mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
+        avisar('erro', (erro as Error).message)
         return false
       } finally {
         salvando.value = false
@@ -585,7 +622,7 @@ export default defineComponent({
         ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value)
       ]
       if (alteracoes.length === 0) {
-        mensagem.value = { tipo: 'info', texto: 'Nada foi alterado desde o último salvamento.' }
+        avisar('info', 'Nada foi alterado desde o último salvamento.')
         return
       }
       const ok = await executar(
@@ -621,7 +658,7 @@ export default defineComponent({
     return {
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
       fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao,
-      titulo, subtitulo, statusFicha, dadosResumo,
+      titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
@@ -632,7 +669,9 @@ export default defineComponent({
       opcoesAboRh: OPCOES_ABO_RH,
       opcoesGrupo: ['A', 'B', 'AB', 'O'].map(g => ({ valor: g, rotulo: g })),
       opcoesPositivoNegativo: ['Positivo', 'Negativo'].map(v => ({ valor: v, rotulo: v })),
-      opcoesSexo: OPCOES_SEXO
+      opcoesSexo: OPCOES_SEXO,
+      gruposRh: Object.values(ROTULO_ABO_RH) as string[],
+      hemocomponentes
     }
   }
 })
@@ -759,6 +798,51 @@ export default defineComponent({
 
 .alerta svg {
   flex-shrink: 0;
+}
+
+.indice {
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  box-shadow: 0 4px 12px rgba(31, 35, 40, 0.06);
+}
+
+.indice__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cor-fundo);
+  font: inherit;
+  font-size: 12px;
+  color: var(--cor-texto);
+  cursor: pointer;
+}
+
+.indice__item:hover {
+  background: var(--cor-primaria-suave);
+  color: var(--cor-primaria);
+}
+
+.indice__item span {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--cor-primaria);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .grade {
