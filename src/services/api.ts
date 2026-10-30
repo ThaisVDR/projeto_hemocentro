@@ -1,6 +1,7 @@
 // Comunicação com o Backend-Hemocentro.
 // As rotas seguem o fluxo combinado com o backend (upload → IA → ficha "digitalizada" →
 // revisão → aprovação). Se algum nome de rota mudar, ajuste somente este arquivo.
+import { Reacao, extrairAnticorpos, interpretarReacao } from '@/domain/fenotipo'
 import { StatusFicha } from '@/domain/revisao'
 import { tokenAtual } from '@/services/sessao'
 
@@ -247,8 +248,48 @@ export async function solicitarRedefinicaoSenha(email: string): Promise<void> {
 }
 
 // ---------- Pacientes ----------
+// Rotas do backend usadas aqui (todas somente leitura):
+//   GET /pacientes?nome=&dataNascimento=&nomeMae=&prontuario=&pagina=&limite=  → busca (lista paginada)
+//   GET /pacientes/:id/ficha-completa                                          → dados da página do paciente
 
+// Cada item da busca (GET /pacientes). Não traz raça nem ABO/Rh: isso só vem na ficha completa.
 export interface PacienteResumoApi {
+  id: string;
+  nome: string;
+  dataNascimento?: string;
+  nomeMae?: string;
+  prontuario?: string;
+  fichasValidadas: number;
+  racaCor?: string;
+  aboRh?: string;
+}
+
+export interface FiltrosPaciente {
+  nome?: string
+  dataNascimento?: string
+  nomeMae?: string
+  prontuario?: number
+  pagina?: number
+}
+
+export function buscarPacientes(filtros: FiltrosPaciente): Promise<ListaPaginadaApi<PacienteResumoApi>> {
+  const parametros = new URLSearchParams()
+  if (filtros.nome) parametros.set('nome', filtros.nome)
+  if (filtros.dataNascimento) parametros.set('dataNascimento', filtros.dataNascimento)
+  if (filtros.nomeMae) parametros.set('nomeMae', filtros.nomeMae)
+  if (filtros.prontuario) parametros.set('prontuario', String(filtros.prontuario))
+  if (filtros.pagina) parametros.set('pagina', String(filtros.pagina))
+  return requisitar<ListaPaginadaApi<PacienteResumoApi>>(`/pacientes?${parametros.toString()}`)
+}
+
+// Formato que as telas do Prontuário usam (os componentes não mudam).
+export interface AnticorpoPacienteApi {
+  data: string | null
+  especificidade: string
+  classe: string | null
+}
+
+export interface PacienteDetalheApi {
   id: string
   nome: string
   dataNascimento: string | null
@@ -256,29 +297,6 @@ export interface PacienteResumoApi {
   prontuario: number | null
   racaCor: string | null
   aboRh: string | null
-}
-
-export interface FiltrosPaciente {
-  nome: string
-  dataNascimento?: string
-  nomeMae?: string
-}
-
-export function buscarPacientes(filtros: FiltrosPaciente): Promise<PacienteResumoApi[]> {
-  const parametros = new URLSearchParams()
-  parametros.set('nome', filtros.nome)
-  if (filtros.dataNascimento) parametros.set('dataNascimento', filtros.dataNascimento)
-  if (filtros.nomeMae) parametros.set('nomeMae', filtros.nomeMae)
-  return requisitar<PacienteResumoApi[]>(`/pacientes?${parametros.toString()}`)
-}
-
-export interface AnticorpoPacienteApi {
-  data: string | null
-  especificidade: string
-  classe: string | null
-}
-
-export interface PacienteDetalheApi extends PacienteResumoApi {
   sexo: string | null
   cpf: string | null
   cartaoSus: string | null
@@ -290,8 +308,73 @@ export interface PacienteDetalheApi extends PacienteResumoApi {
   ultimaValidacao: { em: string; por: string } | null
 }
 
-export function buscarPaciente(id: string):
-Promise<PacienteDetalheApi> {
-  return requisitar<PacienteDetalheApi>
-  (`/pacientes/${encodeURIComponent(id)}`)
+// Parte da resposta de GET /pacientes/:id/ficha-completa que o Prontuário aproveita.
+interface FichaCompletaApi {
+  paciente: {
+    id: string
+    nome: string
+    sexo: string | null
+    raca: string | null
+    aboRh: string | null
+    dataNascimento: string
+    prontuario: number | null
+    cpf: string | null
+    cartaoSus: string | null
+    diagnostico: string | null
+    nomeMae: string | null
+    municipio: string | null
+  }
+  ultimaValidacao: { fichaCodigo: string; validadoPor: string | null; validadoEm: string | null } | null
+  // Vem da pesquisa mais recente para a mais antiga.
+  pesquisasImunoHematologicas: {
+    dataPesquisa: string
+    dFraco: string | null
+    especificidade: string | null
+    fenotipagem: { antigeno: string; resultado: string }[]
+  }[]
+}
+
+export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
+  const ficha = await requisitar<FichaCompletaApi>(`/pacientes/${encodeURIComponent(id)}/ficha-completa`)
+  const { paciente: p, ultimaValidacao, pesquisasImunoHematologicas: pesquisas } = ficha
+
+  // Para cada antígeno vale o resultado da pesquisa mais recente; "0" = negativo.
+  const antigenosVistos = new Set<string>()
+  const antigenosNegativos: string[] = []
+  // "Anti-c" citado em várias pesquisas aparece uma vez só (com a data da mais recente).
+  const anticorpos: AnticorpoPacienteApi[] = []
+
+  for (const pesquisa of pesquisas) {
+    for (const { antigeno, resultado } of pesquisa.fenotipagem) {
+      if (antigenosVistos.has(antigeno)) continue
+      antigenosVistos.add(antigeno)
+      if (interpretarReacao(resultado as Reacao) === 'negativo') antigenosNegativos.push(antigeno)
+    }
+    for (const especificidade of extrairAnticorpos(pesquisa.especificidade)) {
+      if (!anticorpos.some((a) => a.especificidade.toLowerCase() === especificidade.toLowerCase())) {
+        anticorpos.push({ data: pesquisa.dataPesquisa, especificidade, classe: null })
+      }
+    }
+  }
+
+  return {
+    id: p.id,
+    nome: p.nome,
+    dataNascimento: p.dataNascimento,
+    nomeMae: p.nomeMae,
+    prontuario: p.prontuario,
+    racaCor: p.raca,
+    aboRh: p.aboRh,
+    sexo: p.sexo,
+    cpf: p.cpf,
+    cartaoSus: p.cartaoSus,
+    municipio: p.municipio,
+    diagnostico: p.diagnostico,
+    dFraco: pesquisas.find((x) => x.dFraco)?.dFraco ?? null,
+    antigenosNegativos,
+    anticorpos,
+    ultimaValidacao: ultimaValidacao
+      ? { em: ultimaValidacao.validadoEm ?? '', por: ultimaValidacao.validadoPor ?? 'revisor não identificado' }
+      : null
+  }
 }

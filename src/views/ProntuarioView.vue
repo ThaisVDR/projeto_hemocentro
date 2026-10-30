@@ -1,14 +1,15 @@
 <template>
   <section>
-    <PageHeader titulo="Consulta de prontuário"
-      subtitulo="Consulte informações conferidas, histórico e documentos de origem.">
+    <PageHeader
+      titulo="Consulta de prontuário"
+      subtitulo="Consulte informações conferidas, histórico e documentos de origem."
+    >
       <router-link v-if="pacienteId" :to="{ name: 'prontuarios' }" class="botao">
         <ArrowLeft :size="16" /> Voltar à busca
       </router-link>
     </PageHeader>
 
     <template v-if="!pacienteId">
-
       <form class="cartao busca" @submit.prevent="buscar">
         <label>
           Nome do Paciente
@@ -25,9 +26,9 @@
           <input v-model="nomeMae" type="text" />
         </label>
 
-        <button type="submit" class="botao botao--primario" :disabled="!nome.trim() || carregando">Buscar
-          paciente</button>
-
+        <button type="submit" class="botao botao--primario" :disabled="!podeBuscar || carregando">
+          Buscar paciente
+        </button>
       </form>
 
       <p v-if="carregando" class="estado">Buscando pacientes…</p>
@@ -36,7 +37,12 @@
         Nenhum paciente encontrado. Confira a grafia do nome ou busque também pelo nome da mãe.
       </p>
       <div v-else-if="pacientes" class="cartao resultados">
-        <p class="resultados__titulo">{{ pacientes.length }} paciente(s) encontrado(s)</p>
+        <p class="resultados__titulo">
+          {{ total }} paciente(s) encontrado(s)
+          <template v-if="total > pacientes.length">
+            — mostrando os {{ pacientes.length }} primeiros; refine a busca
+          </template>
+        </p>
 
         <ul class="resultados__lista">
           <li v-for="paciente in pacientes" :key="paciente.id">
@@ -52,8 +58,18 @@
               </span>
 
               <span class="resultado__destaques">
-                <span class="selo selo--perigo">{{ traduzirRaca(paciente.racaCor) }}</span>
-                <span class="selo selo--neutro">{{ traduzirAboRh(paciente.aboRh) }}</span>
+                <span v-if="paciente.prontuario" class="selo selo--neutro">
+                  Prontuário {{ paciente.prontuario }}
+                </span>
+                <span v-if="paciente.racaCor" class="selo selo--perigo">
+                  {{ traduzirRaca(paciente.racaCor) }}
+                </span>
+                <span v-if="paciente.aboRh" class="selo selo--neutro">
+                  {{ traduzirAboRh(paciente.aboRh) }}
+                </span>
+                <span class="selo selo--neutro">
+                  {{ paciente.fichasValidadas }} ficha(s) validada(s)
+                </span>
               </span>
 
               <ChevronRight :size="18" class="resultado__seta" />
@@ -62,6 +78,7 @@
         </ul>
       </div>
     </template>
+
     <template v-else>
       <p v-if="carregandoPaciente" class="estado">Carregando prontuário…</p>
       <p v-else-if="erroPaciente" class="estado estado--erro">{{ erroPaciente }}</p>
@@ -72,7 +89,6 @@
     </template>
   </section>
 </template>
-
 
 <script lang="ts">
 import { traduzirAboRh, traduzirRaca } from '@/domain/traducao'
@@ -90,31 +106,42 @@ export default defineComponent({
   name: 'ProntuarioView',
   components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente, PerfilTransfusional },
   setup() {
-    const nome = ref('');
-    const dataNascimento = ref('');
-    const nomeMae = ref('');
+    const nome = ref('')
+    const dataNascimento = ref('')
+    const nomeMae = ref('')
     const carregando = ref(false)
     const erro = ref<string | null>(null)
     const pacientes = ref<PacienteResumoApi[] | null>(null)
+    const total = ref(0)
     const rota = useRoute()
     const pacienteId = computed(() => (rota.params.pacienteId as string | undefined) || null)
     const paciente = ref<PacienteDetalheApi | null>(null)
     const carregandoPaciente = ref(false)
     const erroPaciente = ref<string | null>(null)
 
+    // Valida se ao menos um filtro foi preenchido para habilitar o botão
+    const podeBuscar = computed(() => {
+      return !!(nome.value.trim() || dataNascimento.value || nomeMae.value.trim())
+    })
+
     async function buscar() {
+      if (!podeBuscar.value) return
+
       carregando.value = true
       erro.value = null
 
       try {
-        pacientes.value = await buscarPacientes({
-          nome: nome.value.trim(),
-          dataNascimento: dataNascimento.value,
-          nomeMae: nomeMae.value.trim()
+        const resposta = await buscarPacientes({
+          nome: nome.value.trim() || undefined,
+          dataNascimento: dataNascimento.value || undefined,
+          nomeMae: nomeMae.value.trim() || undefined
         })
+        pacientes.value = resposta.itens
+        total.value = resposta.total
       } catch (e) {
         erro.value = (e as Error).message
         pacientes.value = null
+        total.value = 0
       } finally {
         carregando.value = false
       }
@@ -129,19 +156,35 @@ export default defineComponent({
       try {
         paciente.value = await buscarPaciente(id)
       } catch (e) {
-      erroPaciente.value = (e as Error).message
-    } finally {
-      carregandoPaciente.value = false
+        erroPaciente.value = (e as Error).message
+      } finally {
+        carregandoPaciente.value = false
+      }
     }
-  }
 
     watch(pacienteId, carregarPaciente, { immediate: true })
 
-
-    return { traduzirAboRh ,traduzirRaca, nome, dataNascimento, nomeMae, carregando, erro, pacientes, buscar, iniciais, formatarData, pacienteId, paciente, carregandoPaciente, erroPaciente }
-}
-});
-
+    return {
+      traduzirAboRh,
+      traduzirRaca,
+      nome,
+      dataNascimento,
+      nomeMae,
+      podeBuscar,
+      carregando,
+      erro,
+      pacientes,
+      total,
+      buscar,
+      iniciais,
+      formatarData,
+      pacienteId,
+      paciente,
+      carregandoPaciente,
+      erroPaciente
+    }
+  }
+})
 </script>
 
 <style scoped>
