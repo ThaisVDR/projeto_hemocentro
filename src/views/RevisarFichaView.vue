@@ -160,7 +160,9 @@
             <Plus :size="14" /> Adicionar envio
           </button>
           <ConferenciaTabela :conferencia="ficha.transfusoesConferencia"
-            @confirmar="confirmar(ficha.transfusoesConferencia)" />
+            @confirmar="confirmar(ficha.transfusoesConferencia)" 
+            @desfazer="desfazerConferencia(ficha.transfusoesConferencia)"
+            />
         </SecaoRevisao>
 
         <SecaoRevisao v-for="pesquisa in ficha.pesquisas" :key="pesquisa.documento"
@@ -198,7 +200,8 @@
             </table>
           </div>
           <ConferenciaTabela :conferencia="pesquisa.reacoesConferencia"
-            @confirmar="confirmar(pesquisa.reacoesConferencia)" />
+            @confirmar="confirmar(pesquisa.reacoesConferencia)" 
+            @desfazer="desfazerConferencia(pesquisa.reacoesConferencia)" />
         </SecaoRevisao>
 
         <SecaoRevisao titulo="Pesquisa imuno-hematológica" :pagina="4"
@@ -228,7 +231,8 @@
           </div>
           <p class="legenda">0 = negativo • w = fraco • 1+ a 4+ = positivo • nt = não testado • NR = não realizado.
             Vazio não é negativo.</p>
-          <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)" />
+          <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)" 
+          @desfazer="desfazerConferencia(ih.fenotipoConferencia)" />
 
           <h4 class="subtitulo">Identificação de anticorpos irregulares</h4>
           <div class="tabela-rolavel" @focusin="pagina = 4">
@@ -250,7 +254,8 @@
                   </td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
-                      @input="marcarEditado(ih.anticorposConferencia)" /></td>
+                      @input="marcarEditado(ih.anticorposConferencia)" 
+                      @desfazer="desfazerConferencia(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.classe" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerAnticorpo(indice)">
@@ -330,7 +335,7 @@ import {
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
-  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
+  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia, 
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
@@ -500,6 +505,7 @@ export default defineComponent({
       return {
         onAtualizar: (valor: string) => editarCampo(campo, valor),
         onConfirmar: () => confirmarConferencia(campo),
+        onDesfazerConferencia: () => desfazerConferencia(campo),
         onNaoConsta: () => marcarNaoConsta(campo),
         onDesfazerNaoConsta: () => desfazerNaoConsta(campo),
         onFoco: (numero: number) => { pagina.value = numero }
