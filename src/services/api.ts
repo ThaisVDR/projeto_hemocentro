@@ -114,6 +114,19 @@ export function buscarFicha(id: string): Promise<FichaDetalheApi> {
   return requisitar<FichaDetalheApi>(`/fichas/${encodeURIComponent(id)}`)
 }
 
+export interface RevisaoApi {
+  status: StatusFicha
+  revisor: { id: number; nome: string }
+}
+
+export function iniciarRevisao(id: string): Promise<RevisaoApi> {
+  return requisitar<RevisaoApi>(`/fichas/${encodeURIComponent(id)}/iniciar-revisao`, { method: 'POST' })
+}
+
+export function assumirRevisao(id: string, justificativa: string | null): Promise<RevisaoApi> {
+  return enviarJson<RevisaoApi>(`/fichas/${encodeURIComponent(id)}/assumir-revisao`, 'POST', { justificativa })
+}
+
 export function urlArquivoDocumento(documentoId: number): string {
   return `${API_URL}/documentos/${documentoId}/arquivo`
 }
