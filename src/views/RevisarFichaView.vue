@@ -24,6 +24,22 @@
     <p v-if="carregando" class="mensagem mensagem--info">Carregando ficha…</p>
     <p v-if="mensagem" class="mensagem" :class="`mensagem--${mensagem.tipo}`">{{ mensagem.texto }}</p>
 
+    <div v-if="!carregando && fichaId && !finalizada" class="cartao revisor">
+      <template v-if="ficha.status === 'AGUARDANDO_REVISAO' || ficha.status === 'COM_PENDENCIA'">
+        <span>Ninguém está revisando esta ficha.</span>
+        <button type="button" class="botao botao--primario" :disabled="salvando" @click="comecarRevisao">
+          <UserCheck :size="14" /> Iniciar revisão
+        </button>
+      </template>
+      <span v-else-if="revisaoEhMinha">Você está revisando esta ficha.</span>
+      <template v-else-if="revisor">
+        <span><strong>{{ revisor.nome }}</strong> está revisando esta ficha.</span>
+        <button type="button" class="botao" :disabled="salvando" @click="tomarRevisao">
+          <Users :size="14" /> Assumir revisão
+        </button>
+      </template>
+    </div>
+
     <div class="revisao__colunas">
       <div class="revisao__documento">
         <DocumentoOriginal :arquivo="arquivo" :pagina="pagina" @selecionar="selecionarArquivo"
@@ -103,10 +119,8 @@
               <tbody>
                 <tr v-for="(linha, indice) in ficha.transfusoes" :key="indice">
                   <td>
-                    <CampoData
-                      :model-value="linha.dataEnvio ?? undefined"
-                      @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }"
-                    />
+                    <CampoData :model-value="linha.dataEnvio ?? undefined"
+                      @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }" />
                   </td>
                   <td><input v-model="linha.tipoHemocomponente" class="curto"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
@@ -130,7 +144,8 @@
                   </td>
                   <td><input v-model="linha.destino" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.responsavelLiberacao"
-                      @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                      @input="marcarEditado(ficha.transfusoesConferencia)" />
+                  </td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerTransfusao(indice)">
                       <Trash2 :size="14" />
@@ -229,10 +244,8 @@
               <tbody>
                 <tr v-for="(anticorpo, indice) in ih.anticorpos" :key="indice">
                   <td>
-                    <CampoData
-                      :model-value="anticorpo.data ?? undefined"
-                      @update:model-value="valor => { anticorpo.data = valor ?? undefined; marcarEditado(ih.anticorposConferencia) }"
-                    />
+                    <CampoData :model-value="anticorpo.data ?? undefined"
+                      @update:model-value="valor => { anticorpo.data = valor ?? undefined; marcarEditado(ih.anticorposConferencia) }" />
                   </td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
@@ -281,16 +294,16 @@
         </div>
       </div>
       <div class="acoes__botoes">
-        <button type="button" class="botao" :disabled="salvando || finalizada" @click="recusar">
+        <button type="button" class="botao" :disabled="salvando || !revisaoEhMinha" @click="recusar">
           <Ban :size="14" /> Recusar
         </button>
-        <button type="button" class="botao" :disabled="salvando || finalizada" @click="sinalizarPendencia">
+        <button type="button" class="botao" :disabled="salvando || !revisaoEhMinha" @click="sinalizarPendencia">
           <Flag :size="14" /> Sinalizar pendência
         </button>
-        <button type="button" class="botao" :disabled="salvando || finalizada" @click="salvarRascunho">Salvar
+        <button type="button" class="botao" :disabled="salvando || !revisaoEhMinha" @click="salvarRascunho">Salvar
           rascunho</button>
         <button type="button" class="botao botao--primario"
-          :disabled="!conferencia.podeAprovar || salvando || finalizada" @click="aprovar">
+          :disabled="!conferencia.podeAprovar || salvando || !revisaoEhMinha" @click="aprovar">
           <Check :size="14" /> Aprovar e salvar
         </button>
       </div>
@@ -315,11 +328,12 @@ import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from 
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
-  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
 } from '@/domain/revisao'
 import {
-  aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoFicha
+  aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao
 } from '@/services/api'
+import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
 
@@ -351,6 +365,10 @@ export default defineComponent({
     const fichaId = computed(() => (rota.params.fichaId as string | undefined) || null)
     const carregando = ref(false)
     const salvando = ref(false)
+    const revisor = ref<{ id: number; nome: string } | null>(null)
+    const revisaoEhMinha = computed(() =>
+      ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
+    )
 
     const conferencia = computed(() => resumirConferencia(ficha))
     const percentual = computed(() =>
@@ -384,20 +402,55 @@ export default defineComponent({
       mensagem.value = null
       if (!id) {
         Object.assign(ficha, criarFichaVazia())
+        revisor.value = null
         trocarArquivo(null)
         return
       }
       carregando.value = true
       try {
         const detalhe = await buscarFicha(id)
-        const salva = detalhe.revisao as FichaEmRevisao | null
-        Object.assign(ficha, salva ? { ...salva, status: detalhe.status } : fichaDaExtracao(detalhe))
-        trocarArquivo({ nome: detalhe.arquivo, tipo: tipoPeloNome(detalhe.arquivo), url: urlArquivoFicha(id) })
-        if (detalhe.erro) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erro}` }
+        Object.assign(ficha, fichaDaExtracao(detalhe))
+        revisor.value = detalhe.revisor
+        const nomeArquivo = detalhe.documento.nomeOriginal
+        trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
+        if (detalhe.erroLeitura) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erroLeitura}` }
       } catch (erro) {
         mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
       } finally {
         carregando.value = false
+      }
+    }
+
+    async function comecarRevisao() {
+      if (!fichaId.value) return
+      salvando.value = true
+      try {
+        const resposta = await iniciarRevisao(fichaId.value)
+        ficha.status = resposta.status
+        revisor.value = resposta.revisor
+        mensagem.value = { tipo: 'sucesso', texto: 'Revisão iniciada. A ficha agora está com você.' }
+      } catch (e) {
+        mensagem.value = { tipo: 'alerta', texto: (e as Error).message }
+      } finally {
+        salvando.value = false
+      }
+    }
+
+    async function tomarRevisao() {
+      if (!fichaId.value || !revisor.value) return
+      const justificativa = window.prompt(
+        `${revisor.value.nome} está revisando esta ficha. Por que você vai assumir? (opcional)`
+      )
+      if (justificativa === null) return
+      salvando.value = true
+      try {
+        const resposta = await assumirRevisao(fichaId.value, justificativa.trim() || null)
+        revisor.value = resposta.revisor
+        mensagem.value = { tipo: 'sucesso', texto: 'Você assumiu a revisão desta ficha.' }
+      } catch (e) {
+        mensagem.value = { tipo: 'alerta', texto: (e as Error).message }
+      } finally {
+        salvando.value = false
       }
     }
 
@@ -536,6 +589,7 @@ export default defineComponent({
 
     return {
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
+      fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao,
       titulo, subtitulo, statusFicha, dadosResumo,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar,
@@ -558,6 +612,14 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.revisor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
 }
 
 .revisao__trilha {
