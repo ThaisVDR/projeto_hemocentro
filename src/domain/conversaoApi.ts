@@ -1,8 +1,8 @@
-import { FichaDetalheApi } from '@/services/api'
+import { AlteracaoApi, FichaDetalheApi } from '@/services/api'
 import { normalizarAboRh, normalizarRaca, traduzirAboRh } from './traducao'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, lerResultadoTeste } from './revisao'
+import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, ImunohematologiaRevisao, lerResultadoTeste, TransfusaoRevisao } from './revisao'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
@@ -26,6 +26,14 @@ function sugerirTeste(campo: CampoRevisavel, texto: string | null): void {
     campo.estado = 'incerto'
     campo.nota = `Leitura da IA não reconhecida: "${texto}"`
   }
+}
+
+// Qual pesquisa do backend aparece na página 4 da revisão: a primeira com grupo ou Rh.
+export function indicePesquisaPrincipal(detalhe: FichaDetalheApi): number | null {
+  const pesquisas = detalhe.dados?.pesquisas ?? []
+  if (pesquisas.length === 0) return null
+  const comGrupo = pesquisas.findIndex(x => x.gs || x.rh)
+  return comGrupo >= 0 ? comGrupo : 0
 }
 
 export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
@@ -65,7 +73,8 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   // O backend ainda não separa DiaCell, DiaPanel e Pesquisa Imuno Hematológica:
   // os resultados vão para a página 4 e as páginas Bio-Rad ficam para preenchimento.
   const ih = ficha.imunohematologia
-  const principal = extracao.pesquisas.find(x => x.gs || x.rh) ?? extracao.pesquisas[0]
+  const indice = indicePesquisaPrincipal(detalhe)
+  const principal = indice === null ? undefined : extracao.pesquisas[indice]
   if (principal) {
     sugerir(ih.grupoSanguineo, principal.gs)
     sugerir(ih.fatorRh, textoFatorRh(principal.rh))
@@ -88,6 +97,126 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   if (ih.anticorpos.length > 0) ih.anticorposConferencia.estado = 'sugerido'
 
   return ficha
+}
+
+// Campo da tela → caminho do dado no backend (FichaExtraida).
+const CAMINHOS_PACIENTE: Record<keyof IdentificacaoRevisao, string> = {
+  nome: 'paciente.nome',
+  prontuario: 'paciente.prontuario',
+  dataNascimento: 'paciente.dataNascimento',
+  sexo: 'paciente.sexo',
+  nomeMae: 'paciente.nomeMae',
+  racaCor: 'paciente.raca',
+  aboRh: 'paciente.aboRh',
+  municipio: 'paciente.municipio',
+  diagnostico: 'paciente.diagnostico',
+  cartaoSus: 'paciente.cartaoSus'
+}
+
+// Só os campos da identificação que mudaram desde a última vez que a ficha veio do backend.
+export function alteracoesDaIdentificacao(antes: FichaEmRevisao, agora: FichaEmRevisao): AlteracaoApi[] {
+  const campos = Object.keys(CAMINHOS_PACIENTE) as (keyof IdentificacaoRevisao)[]
+  return campos
+    .filter(campo => agora.identificacao[campo].valor !== antes.identificacao[campo].valor)
+    .map(campo => {
+      const texto = agora.identificacao[campo].valor?.trim() || null
+      return {
+        campo: CAMINHOS_PACIENTE[campo],
+        valor: campo === 'prontuario' && texto ? Number(texto) : texto
+      }
+    })
+}
+
+// Uma linha da tabela de envios no formato do backend (TransfusaoExtraida).
+function transfusaoParaApi(t: TransfusaoRevisao) {
+  const [cidade, uf] = (t.destino ?? '').split('/').map(parte => parte.trim())
+  return {
+    dataEnvio: t.dataEnvio || null,
+    tipoHemocomponente: t.tipoHemocomponente || null,
+    numeroDoacao: t.numeroDoacao || null,
+    grsRhd: normalizarAboRh(t.grsRhd) ?? (t.grsRhd || null),
+    volMl: t.volMl ? Number(t.volMl) : null,
+    testesPai: t.testesPai || null,
+    provaCruzada: t.provaCruzada || null,
+    cidadeDestino: cidade || null,
+    ufDestino: uf || null,
+    responsavelLiberacao: t.responsavelLiberacao || null
+  }
+}
+
+function linhaPreenchida(t: TransfusaoRevisao): boolean {
+  return Object.values(t).some(valor => valor !== null && valor !== '')
+}
+
+// Compara as linhas uma a uma: campo corrigido, linha nova no fim ou linha removida.
+export function alteracoesDasTransfusoes(antes: TransfusaoRevisao[], agora: TransfusaoRevisao[]): AlteracaoApi[] {
+  const linhasAntes = antes.filter(linhaPreenchida)
+  const linhasAgora = agora.filter(linhaPreenchida)
+  const alteracoes: AlteracaoApi[] = []
+
+  linhasAgora.forEach((linha, i) => {
+    const nova = transfusaoParaApi(linha)
+    if (i >= linhasAntes.length) {
+      alteracoes.push({ campo: `transfusoes[${i}]`, valor: { ...nova, numeroServico: null, tracejador: null, pagina: 1 } })
+      return
+    }
+    const velha = transfusaoParaApi(linhasAntes[i])
+    for (const chave of Object.keys(nova) as (keyof typeof nova)[]) {
+      if (nova[chave] !== velha[chave]) {
+        alteracoes.push({ campo: `transfusoes[${i}].${chave}`, valor: nova[chave] })
+      }
+    }
+  })
+
+  for (let i = linhasAntes.length - 1; i >= linhasAgora.length; i--) {
+    alteracoes.push({ campo: `transfusoes[${i}]`, valor: null })
+  }
+  return alteracoes
+}
+
+type CampoPesquisa = keyof Pick<ImunohematologiaRevisao,
+  'grupoSanguineo' | 'fatorRh' | 'dFraco' | 'pai' | 'tad' | 'autocontrole' | 'dcScreening' |
+  'observacao' | 'amostra' | 'metodologia' | 'dataExame' | 'responsavelTecnico'>
+
+// Campo da página 4 na tela → campo da pesquisa no backend (PesquisaExtraida).
+const CAMPOS_PESQUISA: Record<CampoPesquisa, string> = {
+  grupoSanguineo: 'gs',
+  fatorRh: 'rh',
+  dFraco: 'dFraco',
+  pai: 'pai',
+  tad: 'tad',
+  autocontrole: 'autocontrole',
+  dcScreening: 'dcScreening',
+  observacao: 'observacao',
+  amostra: 'amostra',
+  metodologia: 'metodologia',
+  dataExame: 'dataPesquisa',
+  responsavelTecnico: 'responsavel'
+}
+
+function valorDaPesquisa(ficha: FichaEmRevisao, campo: CampoPesquisa): string | null {
+  const texto = ficha.imunohematologia[campo].valor?.trim() || null
+  return campo === 'fatorRh' && texto ? texto.toUpperCase() : texto
+}
+
+// Campos da página 4 que mudaram. Sem pesquisa no backend (indice null), manda a pesquisa inteira.
+export function alteracoesDaImunohematologia(
+  antes: FichaEmRevisao, agora: FichaEmRevisao, indice: number | null
+): AlteracaoApi[] {
+  const campos = Object.keys(CAMPOS_PESQUISA) as CampoPesquisa[]
+  const mudaram = campos.filter(campo => valorDaPesquisa(agora, campo) !== valorDaPesquisa(antes, campo))
+  if (mudaram.length === 0) return []
+
+  if (indice === null) {
+    const nova: Record<string, unknown> = { especificidade: null, interpretacao: null, fenotipagem: [], pagina: 4 }
+    campos.forEach(campo => { nova[CAMPOS_PESQUISA[campo]] = valorDaPesquisa(agora, campo) })
+    return [{ campo: 'pesquisas[0]', valor: nova }]
+  }
+
+  return mudaram.map(campo => ({
+    campo: `pesquisas[${indice}].${CAMPOS_PESQUISA[campo]}`,
+    valor: valorDaPesquisa(agora, campo)
+  }))
 }
 
 function valor(campo: CampoRevisavel): string | null {
