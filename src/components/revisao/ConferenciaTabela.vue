@@ -7,21 +7,24 @@
     <button v-if="conferencia.estado === 'sugerido'" type="button" class="botao" @click="$emit('confirmar')">
       <Check :size="14" /> Confirmar tabela
     </button>
+    <button v-if="conferencia.estado === 'conferido'" type="button" class="botao" @click="$emit('desfazer')">
+      <Undo2 :size="14" /> Desfazer
+    </button>
   </div>
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { Check, Circle, Sparkles } from 'lucide-vue-next'
+import { Check, Circle, Sparkles, Undo2 } from 'lucide-vue-next'
 import { Conferencia } from '@/domain/revisao'
 
 export default defineComponent({
   name: 'ConferenciaTabela',
-  components: { Check },
+  components: { Check, Undo2 },
   props: {
     conferencia: { type: Object as PropType<Conferencia>, required: true }
   },
-  emits: ['confirmar'],
+  emits: ['confirmar', 'desfazer'],
   setup(props) {
     const texto = computed(() => {
       const { rotulo, pagina, estado } = props.conferencia

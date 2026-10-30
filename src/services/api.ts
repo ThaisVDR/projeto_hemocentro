@@ -229,6 +229,21 @@ export function listarFilaRevisao(filtros: FiltrosFila): Promise<FilaRevisaoApi>
   return requisitar<FilaRevisaoApi>(`/fichas/revisao?${parametros.toString()}`)
 }
 
+// ---------- Colaboradores ----------
+
+export interface ColaboradorApi {
+  id: number
+  nome: string
+}
+
+export function buscarColaboradores(busca: string): Promise<ColaboradorApi[]> {
+  return requisitar<ColaboradorApi[]>(`/colaboradores?busca=${encodeURIComponent(busca)}`)
+}
+
+export function cadastrarColaborador(nome: string): Promise<ColaboradorApi> {
+  return enviarJson<ColaboradorApi>('/colaboradores', 'POST', { nome: nome.trim() })
+}
+
 // ---------- Autenticação ----------
 
 export interface RespostaLoginApi {

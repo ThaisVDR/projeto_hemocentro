@@ -143,8 +143,9 @@
                     </select>
                   </td>
                   <td><input v-model="linha.destino" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.responsavelLiberacao"
-                      @input="marcarEditado(ficha.transfusoesConferencia)" />
+                  <td>
+                    <CampoColaborador v-model="linha.responsavelLiberacao"
+                      @update:model-value="marcarEditado(ficha.transfusoesConferencia)" />
                   </td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerTransfusao(indice)">
@@ -159,7 +160,8 @@
             <Plus :size="14" /> Adicionar envio
           </button>
           <ConferenciaTabela :conferencia="ficha.transfusoesConferencia"
-            @confirmar="confirmar(ficha.transfusoesConferencia)" />
+            @confirmar="confirmar(ficha.transfusoesConferencia)"
+            @desfazer="desfazerConferencia(ficha.transfusoesConferencia)" />
         </SecaoRevisao>
 
         <SecaoRevisao v-for="pesquisa in ficha.pesquisas" :key="pesquisa.documento"
@@ -197,7 +199,8 @@
             </table>
           </div>
           <ConferenciaTabela :conferencia="pesquisa.reacoesConferencia"
-            @confirmar="confirmar(pesquisa.reacoesConferencia)" />
+            @confirmar="confirmar(pesquisa.reacoesConferencia)"
+            @desfazer="desfazerConferencia(pesquisa.reacoesConferencia)" />
         </SecaoRevisao>
 
         <SecaoRevisao titulo="Pesquisa imuno-hematológica" :pagina="4"
@@ -227,7 +230,8 @@
           </div>
           <p class="legenda">0 = negativo • w = fraco • 1+ a 4+ = positivo • nt = não testado • NR = não realizado.
             Vazio não é negativo.</p>
-          <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)" />
+          <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)"
+            @desfazer="desfazerConferencia(ih.fenotipoConferencia)" />
 
           <h4 class="subtitulo">Identificação de anticorpos irregulares</h4>
           <div class="tabela-rolavel" @focusin="pagina = 4">
@@ -263,14 +267,15 @@
           <button type="button" class="botao botao--leve" @click="adicionarAnticorpo">
             <Plus :size="14" /> Adicionar anticorpo
           </button>
-          <ConferenciaTabela :conferencia="ih.anticorposConferencia" @confirmar="confirmar(ih.anticorposConferencia)" />
+          <ConferenciaTabela :conferencia="ih.anticorposConferencia" @confirmar="confirmar(ih.anticorposConferencia)"
+            @desfazer="desfazerConferencia(ih.anticorposConferencia)" />
 
           <div class="grade">
             <CampoRevisao :campo="ih.amostra" v-bind="eventos(ih.amostra)" />
             <CampoRevisao :campo="ih.metodologia" v-bind="eventos(ih.metodologia)" />
             <CampoRevisao :campo="ih.dataExame" tipo="date" v-bind="eventos(ih.dataExame)" />
             <CampoRevisao :campo="ih.solicitante" v-bind="eventos(ih.solicitante)" />
-            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico"
+            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico" tipo="colaborador"
               v-bind="eventos(ih.responsavelTecnico)" />
           </div>
         </SecaoRevisao>
@@ -330,7 +335,7 @@ import {
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
-  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
+  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia,
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
@@ -338,6 +343,7 @@ import {
 } from '@/services/api'
 import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
+import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
 
 
@@ -356,7 +362,8 @@ export default defineComponent({
   name: 'RevisarFichaView',
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
-    PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData
+    PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
+    CampoColaborador
   },
   setup() {
     const rota = useRoute()
@@ -498,6 +505,7 @@ export default defineComponent({
       return {
         onAtualizar: (valor: string) => editarCampo(campo, valor),
         onConfirmar: () => confirmarConferencia(campo),
+        onDesfazerConferencia: () => desfazerConferencia(campo),
         onNaoConsta: () => marcarNaoConsta(campo),
         onDesfazerNaoConsta: () => desfazerNaoConsta(campo),
         onFoco: (numero: number) => { pagina.value = numero }
