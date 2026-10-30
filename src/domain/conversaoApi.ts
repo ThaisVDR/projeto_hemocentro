@@ -1,8 +1,8 @@
-import { FichaDetalheApi } from '@/services/api'
+import { AlteracaoApi, FichaDetalheApi } from '@/services/api'
 import { normalizarAboRh, normalizarRaca, traduzirAboRh } from './traducao'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, lerResultadoTeste } from './revisao'
+import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste } from './revisao'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
@@ -88,6 +88,34 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   if (ih.anticorpos.length > 0) ih.anticorposConferencia.estado = 'sugerido'
 
   return ficha
+}
+
+// Campo da tela → caminho do dado no backend (FichaExtraida).
+const CAMINHOS_PACIENTE: Record<keyof IdentificacaoRevisao, string> = {
+  nome: 'paciente.nome',
+  prontuario: 'paciente.prontuario',
+  dataNascimento: 'paciente.dataNascimento',
+  sexo: 'paciente.sexo',
+  nomeMae: 'paciente.nomeMae',
+  racaCor: 'paciente.raca',
+  aboRh: 'paciente.aboRh',
+  municipio: 'paciente.municipio',
+  diagnostico: 'paciente.diagnostico',
+  cartaoSus: 'paciente.cartaoSus'
+}
+
+// Só os campos da identificação que mudaram desde a última vez que a ficha veio do backend.
+export function alteracoesDaIdentificacao(antes: FichaEmRevisao, agora: FichaEmRevisao): AlteracaoApi[] {
+  const campos = Object.keys(CAMINHOS_PACIENTE) as (keyof IdentificacaoRevisao)[]
+  return campos
+    .filter(campo => agora.identificacao[campo].valor !== antes.identificacao[campo].valor)
+    .map(campo => {
+      const texto = agora.identificacao[campo].valor?.trim() || null
+      return {
+        campo: CAMINHOS_PACIENTE[campo],
+        valor: campo === 'prontuario' && texto ? Number(texto) : texto
+      }
+    })
 }
 
 function valor(campo: CampoRevisavel): string | null {

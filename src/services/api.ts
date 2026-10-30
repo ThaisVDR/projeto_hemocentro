@@ -127,6 +127,16 @@ export function assumirRevisao(id: string, justificativa: string | null): Promis
   return enviarJson<RevisaoApi>(`/fichas/${encodeURIComponent(id)}/assumir-revisao`, 'POST', { justificativa })
 }
 
+// Uma correção: "campo" é o caminho no dado lido pela IA, ex.: "paciente.sexo".
+export interface AlteracaoApi {
+  campo: string
+  valor: string | number | null
+}
+
+export function salvarAlteracoes(id: string, alteracoes: AlteracaoApi[]): Promise<FichaDetalheApi> {
+  return enviarJson<FichaDetalheApi>(`/fichas/${encodeURIComponent(id)}/dados`, 'PATCH', { alteracoes })
+}
+
 export function urlArquivoDocumento(documentoId: number): string {
   return `${API_URL}/documentos/${documentoId}/arquivo`
 }

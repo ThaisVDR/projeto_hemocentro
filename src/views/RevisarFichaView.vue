@@ -323,15 +323,15 @@ import CampoRevisao from '@/components/revisao/CampoRevisao.vue'
 import ConferenciaTabela from '@/components/revisao/ConferenciaTabela.vue'
 import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/DocumentoOriginal.vue'
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
-import { fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
+import { alteracoesDaIdentificacao, fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
-  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
-  aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao
+  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao
 } from '@/services/api'
 import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
@@ -366,6 +366,7 @@ export default defineComponent({
     const carregando = ref(false)
     const salvando = ref(false)
     const revisor = ref<{ id: number; nome: string } | null>(null)
+    const original = ref<FichaEmRevisao | null>(null)
     const revisaoEhMinha = computed(() =>
       ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
     )
@@ -403,6 +404,7 @@ export default defineComponent({
       if (!id) {
         Object.assign(ficha, criarFichaVazia())
         revisor.value = null
+        original.value = null
         trocarArquivo(null)
         return
       }
@@ -410,6 +412,7 @@ export default defineComponent({
       try {
         const detalhe = await buscarFicha(id)
         Object.assign(ficha, fichaDaExtracao(detalhe))
+        original.value = fichaDaExtracao(detalhe)
         revisor.value = detalhe.revisor
         const nomeArquivo = detalhe.documento.nomeOriginal
         trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
@@ -530,7 +533,7 @@ export default defineComponent({
     }
 
     // Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar.
-    async function executar(acao: (id: string) => Promise<void>, sucesso: Mensagem) {
+    async function executar(acao: (id: string) => Promise<unknown>, sucesso: Mensagem) {
       if (!fichaId.value) {
         mensagem.value = {
           tipo: 'alerta',
@@ -560,11 +563,18 @@ export default defineComponent({
       if (ok) ficha.status = 'VALIDADA'
     }
 
-    function salvarRascunho() {
-      executar(
-        id => salvarRascunhoFicha(id, ficha),
-        { tipo: 'info', texto: 'Rascunho salvo. A ficha continua na fila de revisão.' }
+    async function salvarRascunho() {
+      if (!original.value) return
+      const alteracoes = alteracoesDaIdentificacao(original.value, ficha)
+      if (alteracoes.length === 0) {
+        mensagem.value = { tipo: 'info', texto: 'Nenhum campo da identificação foi alterado desde o último salvamento.' }
+        return
+      }
+      const ok = await executar(
+        id => salvarAlteracoes(id, alteracoes),
+        { tipo: 'sucesso', texto: `${alteracoes.length} campo(s) salvo(s). A ficha continua com você.` }
       )
+      if (ok) original.value = JSON.parse(JSON.stringify(ficha))
     }
 
     async function sinalizarPendencia() {
