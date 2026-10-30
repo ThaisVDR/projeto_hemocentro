@@ -362,6 +362,7 @@ import {
 } from '@/services/api'
 import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
+import { avisar } from '@/composables/useAvisos'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
@@ -483,9 +484,9 @@ export default defineComponent({
         const resposta = await iniciarRevisao(fichaId.value)
         ficha.status = resposta.status
         revisor.value = resposta.revisor
-        mensagem.value = { tipo: 'sucesso', texto: 'Revisão iniciada. A ficha agora está com você.' }
+        avisar('sucesso', 'Revisão iniciada. A ficha agora está com você.')
       } catch (e) {
-        mensagem.value = { tipo: 'alerta', texto: (e as Error).message }
+        avisar('erro', (e as Error).message)
       } finally {
         salvando.value = false
       }
@@ -501,9 +502,9 @@ export default defineComponent({
       try {
         const resposta = await assumirRevisao(fichaId.value, justificativa.trim() || null)
         revisor.value = resposta.revisor
-        mensagem.value = { tipo: 'sucesso', texto: 'Você assumiu a revisão desta ficha.' }
+        avisar('sucesso', 'Você assumiu a revisão desta ficha.')
       } catch (e) {
-        mensagem.value = { tipo: 'alerta', texto: (e as Error).message }
+        avisar('erro', (e as Error).message)
       } finally {
         salvando.value = false
       }
@@ -588,20 +589,17 @@ export default defineComponent({
     // Executa uma ação no backend; sem ficha enviada pelo Upload não há onde gravar.
     async function executar(acao: (id: string) => Promise<unknown>, sucesso: Mensagem) {
       if (!fichaId.value) {
-        mensagem.value = {
-          tipo: 'alerta',
-          texto: 'Esta ficha não foi enviada pela tela de Upload, então ainda não existe no banco. ' +
-            'Envie o arquivo pelo Upload: ele passa pela IA e aparece na fila de revisão.'
-        }
+        avisar('erro', 'Esta ficha não foi enviada pela tela de Upload, então ainda não existe no banco. ' +
+          'Envie o arquivo pelo Upload: ele passa pela IA e aparece na fila de revisão.')
         return false
       }
       salvando.value = true
       try {
         await acao(fichaId.value)
-        mensagem.value = sucesso
+        avisar(sucesso.tipo, sucesso.texto)
         return true
       } catch (erro) {
-        mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
+        avisar('erro', (erro as Error).message)
         return false
       } finally {
         salvando.value = false
@@ -624,7 +622,7 @@ export default defineComponent({
         ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value)
       ]
       if (alteracoes.length === 0) {
-        mensagem.value = { tipo: 'info', texto: 'Nada foi alterado desde o último salvamento.' }
+        avisar('info', 'Nada foi alterado desde o último salvamento.')
         return
       }
       const ok = await executar(
