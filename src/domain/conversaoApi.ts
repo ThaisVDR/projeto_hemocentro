@@ -2,7 +2,7 @@ import { AlteracaoApi, FichaDetalheApi } from '@/services/api'
 import { normalizarAboRh, normalizarRaca, traduzirAboRh } from './traducao'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste, TransfusaoRevisao } from './revisao'
+import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, ImunohematologiaRevisao, lerResultadoTeste, TransfusaoRevisao } from './revisao'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
@@ -26,6 +26,14 @@ function sugerirTeste(campo: CampoRevisavel, texto: string | null): void {
     campo.estado = 'incerto'
     campo.nota = `Leitura da IA não reconhecida: "${texto}"`
   }
+}
+
+// Qual pesquisa do backend aparece na página 4 da revisão: a primeira com grupo ou Rh.
+export function indicePesquisaPrincipal(detalhe: FichaDetalheApi): number | null {
+  const pesquisas = detalhe.dados?.pesquisas ?? []
+  if (pesquisas.length === 0) return null
+  const comGrupo = pesquisas.findIndex(x => x.gs || x.rh)
+  return comGrupo >= 0 ? comGrupo : 0
 }
 
 export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
@@ -65,7 +73,8 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   // O backend ainda não separa DiaCell, DiaPanel e Pesquisa Imuno Hematológica:
   // os resultados vão para a página 4 e as páginas Bio-Rad ficam para preenchimento.
   const ih = ficha.imunohematologia
-  const principal = extracao.pesquisas.find(x => x.gs || x.rh) ?? extracao.pesquisas[0]
+  const indice = indicePesquisaPrincipal(detalhe)
+  const principal = indice === null ? undefined : extracao.pesquisas[indice]
   if (principal) {
     sugerir(ih.grupoSanguineo, principal.gs)
     sugerir(ih.fatorRh, textoFatorRh(principal.rh))
@@ -163,6 +172,51 @@ export function alteracoesDasTransfusoes(antes: TransfusaoRevisao[], agora: Tran
     alteracoes.push({ campo: `transfusoes[${i}]`, valor: null })
   }
   return alteracoes
+}
+
+type CampoPesquisa = keyof Pick<ImunohematologiaRevisao,
+  'grupoSanguineo' | 'fatorRh' | 'dFraco' | 'pai' | 'tad' | 'autocontrole' | 'dcScreening' |
+  'observacao' | 'amostra' | 'metodologia' | 'dataExame' | 'responsavelTecnico'>
+
+// Campo da página 4 na tela → campo da pesquisa no backend (PesquisaExtraida).
+const CAMPOS_PESQUISA: Record<CampoPesquisa, string> = {
+  grupoSanguineo: 'gs',
+  fatorRh: 'rh',
+  dFraco: 'dFraco',
+  pai: 'pai',
+  tad: 'tad',
+  autocontrole: 'autocontrole',
+  dcScreening: 'dcScreening',
+  observacao: 'observacao',
+  amostra: 'amostra',
+  metodologia: 'metodologia',
+  dataExame: 'dataPesquisa',
+  responsavelTecnico: 'responsavel'
+}
+
+function valorDaPesquisa(ficha: FichaEmRevisao, campo: CampoPesquisa): string | null {
+  const texto = ficha.imunohematologia[campo].valor?.trim() || null
+  return campo === 'fatorRh' && texto ? texto.toUpperCase() : texto
+}
+
+// Campos da página 4 que mudaram. Sem pesquisa no backend (indice null), manda a pesquisa inteira.
+export function alteracoesDaImunohematologia(
+  antes: FichaEmRevisao, agora: FichaEmRevisao, indice: number | null
+): AlteracaoApi[] {
+  const campos = Object.keys(CAMPOS_PESQUISA) as CampoPesquisa[]
+  const mudaram = campos.filter(campo => valorDaPesquisa(agora, campo) !== valorDaPesquisa(antes, campo))
+  if (mudaram.length === 0) return []
+
+  if (indice === null) {
+    const nova: Record<string, unknown> = { especificidade: null, interpretacao: null, fenotipagem: [], pagina: 4 }
+    campos.forEach(campo => { nova[CAMPOS_PESQUISA[campo]] = valorDaPesquisa(agora, campo) })
+    return [{ campo: 'pesquisas[0]', valor: nova }]
+  }
+
+  return mudaram.map(campo => ({
+    campo: `pesquisas[${indice}].${CAMPOS_PESQUISA[campo]}`,
+    valor: valorDaPesquisa(agora, campo)
+  }))
 }
 
 function valor(campo: CampoRevisavel): string | null {

@@ -323,7 +323,10 @@ import CampoRevisao from '@/components/revisao/CampoRevisao.vue'
 import ConferenciaTabela from '@/components/revisao/ConferenciaTabela.vue'
 import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/DocumentoOriginal.vue'
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
-import { alteracoesDaIdentificacao, alteracoesDasTransfusoes, fichaDaExtracao, fichaParaEnvio } from '@/domain/conversaoApi'
+import {
+  alteracoesDaIdentificacao, alteracoesDaImunohematologia, alteracoesDasTransfusoes,
+  fichaDaExtracao, fichaParaEnvio, indicePesquisaPrincipal
+} from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
@@ -367,6 +370,7 @@ export default defineComponent({
     const salvando = ref(false)
     const revisor = ref<{ id: number; nome: string } | null>(null)
     const original = ref<FichaEmRevisao | null>(null)
+    const indicePesquisa = ref<number | null>(null)
     const revisaoEhMinha = computed(() =>
       ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
     )
@@ -405,6 +409,7 @@ export default defineComponent({
         Object.assign(ficha, criarFichaVazia())
         revisor.value = null
         original.value = null
+        indicePesquisa.value = null
         trocarArquivo(null)
         return
       }
@@ -413,6 +418,7 @@ export default defineComponent({
         const detalhe = await buscarFicha(id)
         Object.assign(ficha, fichaDaExtracao(detalhe))
         original.value = fichaDaExtracao(detalhe)
+        indicePesquisa.value = indicePesquisaPrincipal(detalhe)
         revisor.value = detalhe.revisor
         const nomeArquivo = detalhe.documento.nomeOriginal
         trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
@@ -567,7 +573,8 @@ export default defineComponent({
       if (!original.value) return
       const alteracoes = [
         ...alteracoesDaIdentificacao(original.value, ficha),
-        ...alteracoesDasTransfusoes(original.value.transfusoes, ficha.transfusoes)
+        ...alteracoesDasTransfusoes(original.value.transfusoes, ficha.transfusoes),
+        ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value)
       ]
       if (alteracoes.length === 0) {
         mensagem.value = { tipo: 'info', texto: 'Nada foi alterado desde o último salvamento.' }
@@ -577,7 +584,10 @@ export default defineComponent({
         id => salvarAlteracoes(id, alteracoes),
         { tipo: 'sucesso', texto: `${alteracoes.length} campo(s) salvo(s). A ficha continua com você.` }
       )
-      if (ok) original.value = JSON.parse(JSON.stringify(ficha))
+      if (ok) {
+        original.value = JSON.parse(JSON.stringify(ficha))
+        if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
+      }
     }
 
     async function sinalizarPendencia() {
@@ -618,6 +628,7 @@ export default defineComponent({
     }
   }
 })
+
 </script>
 
 <style scoped>
