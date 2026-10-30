@@ -103,10 +103,8 @@
               <tbody>
                 <tr v-for="(linha, indice) in ficha.transfusoes" :key="indice">
                   <td>
-                    <CampoData
-                      :model-value="linha.dataEnvio ?? undefined"
-                      @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }"
-                    />
+                    <CampoData :model-value="linha.dataEnvio ?? undefined"
+                      @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }" />
                   </td>
                   <td><input v-model="linha.tipoHemocomponente" class="curto"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
@@ -229,10 +227,8 @@
               <tbody>
                 <tr v-for="(anticorpo, indice) in ih.anticorpos" :key="indice">
                   <td>
-                    <CampoData
-                      :model-value="anticorpo.data ?? undefined"
-                      @update:model-value="valor => { anticorpo.data = valor ?? undefined; marcarEditado(ih.anticorposConferencia) }"
-                    />
+                    <CampoData :model-value="anticorpo.data ?? undefined"
+                      @update:model-value="valor => { anticorpo.data = valor ?? undefined; marcarEditado(ih.anticorposConferencia) }" />
                   </td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
@@ -318,7 +314,7 @@ import {
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
 } from '@/domain/revisao'
 import {
-  aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoFicha
+  aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoDocumento
 } from '@/services/api'
 import CampoData from '@/components/CampoData.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
@@ -390,10 +386,10 @@ export default defineComponent({
       carregando.value = true
       try {
         const detalhe = await buscarFicha(id)
-        const salva = detalhe.revisao as FichaEmRevisao | null
-        Object.assign(ficha, salva ? { ...salva, status: detalhe.status } : fichaDaExtracao(detalhe))
-        trocarArquivo({ nome: detalhe.arquivo, tipo: tipoPeloNome(detalhe.arquivo), url: urlArquivoFicha(id) })
-        if (detalhe.erro) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erro}` }
+        Object.assign(ficha, fichaDaExtracao(detalhe))
+        const nomeArquivo = detalhe.documento.nomeOriginal
+        trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
+        if (detalhe.erroLeitura) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erroLeitura}` }
       } catch (erro) {
         mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
       } finally {

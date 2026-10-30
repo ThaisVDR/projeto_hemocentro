@@ -1,8 +1,8 @@
 import { FichaDetalheApi } from '@/services/api'
-import { normalizarAboRh, normalizarRaca } from './traducao'
+import { normalizarAboRh, normalizarRaca, traduzirAboRh } from './traducao'
 import { extrairAnticorpos, Fenotipo } from './fenotipo'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, lerResultadoTeste } from './revisao'
+import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, lerResultadoTeste } from './revisao'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
@@ -17,7 +17,7 @@ function textoFatorRh(texto: string | null): string | null {
   return texto
 }
 
-/** Sugere um resultado de teste; se a IA leu algo que não é Positivo/Negativo/NR, marca como incerto. */
+// Sugere um resultado de teste; se a IA leu algo que não é Positivo/Negativo/NR, marca como incerto.
 function sugerirTeste(campo: CampoRevisavel, texto: string | null): void {
   const resultado = lerResultadoTeste(texto)
   if (resultado) {
@@ -28,20 +28,10 @@ function sugerirTeste(campo: CampoRevisavel, texto: string | null): void {
   }
 }
 
-const CAMPOS_PACIENTE: Record<string, keyof IdentificacaoRevisao> = {
-  nome: 'nome',
-  dataNascimento: 'dataNascimento',
-  prontuario: 'prontuario',
-  racaCor: 'racaCor',
-  aboRh: 'aboRh',
-  diagnostico: 'diagnostico',
-  nomeMae: 'nomeMae'
-}
-
 export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   const ficha = criarFichaVazia()
   ficha.status = detalhe.status
-  const extracao = detalhe.extracao
+  const extracao = detalhe.dados
   if (!extracao) return ficha
 
   const p = extracao.paciente
@@ -49,17 +39,20 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   sugerir(id.nome, p.nome)
   sugerir(id.dataNascimento, p.dataNascimento)
   sugerir(id.prontuario, p.prontuario)
-  sugerir(id.racaCor, normalizarRaca(p.racaCor) ?? p.racaCor)
+  sugerir(id.racaCor, normalizarRaca(p.raca) ?? p.raca)
   sugerir(id.aboRh, normalizarAboRh(p.aboRh) ?? p.aboRh)
   sugerir(id.diagnostico, p.diagnostico)
   sugerir(id.nomeMae, p.nomeMae)
+  sugerir(id.sexo, p.sexo)
+  sugerir(id.cartaoSus, p.cartaoSus)
+  sugerir(id.municipio, p.municipio)
 
   if (extracao.transfusoes.length > 0) {
     ficha.transfusoes = extracao.transfusoes.map(t => ({
       dataEnvio: t.dataEnvio,
       tipoHemocomponente: t.tipoHemocomponente,
       numeroDoacao: t.numeroDoacao,
-      grsRhd: t.grsRhd,
+      grsRhd: t.grsRhd ? traduzirAboRh(t.grsRhd) : null,
       volMl: t.volMl === null ? null : String(t.volMl),
       testesPai: t.testesPai,
       provaCruzada: t.provaCruzada,
@@ -79,23 +72,20 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
     sugerirTeste(ih.tad, principal.tad)
     sugerirTeste(ih.pai, principal.pai)
     sugerirTeste(ih.autocontrole, principal.autocontrole)
-    sugerir(ih.dataExame, principal.data)
+    sugerir(ih.dataExame, principal.dataPesquisa)
     sugerir(ih.responsavelTecnico, principal.responsavel)
+    sugerir(ih.dFraco, principal.dFraco)
+    sugerirTeste(ih.dcScreening, principal.dcScreening)
+    sugerir(ih.amostra, principal.amostra)
+    sugerir(ih.metodologia, principal.metodologia)
+    sugerir(ih.observacao, principal.observacao)
   }
   ih.anticorpos = extracao.pesquisas.flatMap(x =>
-    extrairAnticorpos(x.interpretacao).map(especificidade => ({
-      data: x.data, metodo: null, especificidade, classe: null
-    }))
-  )
+    extrairAnticorpos(x.especificidade || x.interpretacao).map(especificidade => ({
+      data: x.dataPesquisa, metodo: null, especificidade, classe: null
+  }))
+)
   if (ih.anticorpos.length > 0) ih.anticorposConferencia.estado = 'sugerido'
-
-  for (const incerto of detalhe.camposIncertos) {
-    const chave = CAMPOS_PACIENTE[incerto.campo.replace(/^paciente\./, '')]
-    if (chave) {
-      id[chave].estado = 'incerto'
-      id[chave].nota = incerto.motivo
-    }
-  }
 
   return ficha
 }
@@ -104,7 +94,7 @@ function valor(campo: CampoRevisavel): string | null {
   return campo.valor
 }
 
-/** Dados conferidos enviados ao aprovar. Mantém os nomes de FichaExtraida e acrescenta os campos novos. */
+// Dados conferidos enviados ao aprovar. Mantém os nomes de FichaExtraida e acrescenta os campos novos.
 export function fichaParaEnvio(ficha: FichaEmRevisao) {
   const id = ficha.identificacao
   const ih = ficha.imunohematologia

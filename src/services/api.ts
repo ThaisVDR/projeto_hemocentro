@@ -40,15 +40,19 @@ function enviarJson<T>(caminho: string, metodo: string, dados: unknown): Promise
   })
 }
 
+// O que a IA leu (FichaExtraida do backend). Datas em AAAA-MM-DD; null = vazio ou ilegível.
 export interface FichaExtraidaApi {
   paciente: {
     nome: string | null
     dataNascimento: string | null
     prontuario: number | null
-    racaCor: string | null
+    sexo: string | null
+    raca: string | null
     aboRh: string | null
+    cartaoSus: string | null
     diagnostico: string | null
     nomeMae: string | null
+    municipio: string | null
   }
   transfusoes: {
     dataEnvio: string | null
@@ -63,20 +67,31 @@ export interface FichaExtraidaApi {
     responsavelLiberacao: string | null
   }[]
   pesquisas: {
-    data: string | null
+    dataPesquisa: string | null
     gs: string | null
     rh: string | null
-    tad: string | null
+    dFraco: string | null
     pai: string | null
+    tad: string | null
     autocontrole: string | null
+    dcScreening: string | null
+    especificidade: string | null
     interpretacao: string | null
+    observacao: string | null
+    amostra: string | null
+    metodologia: string | null
     responsavel: string | null
   }[]
 }
 
-export interface CampoIncertoApi {
-  campo: string
-  motivo: string
+export interface FichaDetalheApi {
+  id: number
+  codigo: string
+  status: StatusFicha
+  erroLeitura: string | null
+  documento: { id: number; nomeOriginal: string; totalPaginas: number | null }
+  revisor: { id: number; nome: string } | null
+  dados: FichaExtraidaApi | null
 }
 
 export interface FichaResumoApi {
@@ -86,14 +101,6 @@ export interface FichaResumoApi {
   pacienteNome: string | null
   criadaEm: string
   enviadaPor: string | null
-}
-
-export interface FichaDetalheApi extends FichaResumoApi {
-  totalPaginas: number | null
-  extracao: FichaExtraidaApi | null
-  revisao: unknown | null
-  camposIncertos: CampoIncertoApi[]
-  erro: string | null
 }
 
 // ---------- Rotas ----------
@@ -107,8 +114,8 @@ export function buscarFicha(id: string): Promise<FichaDetalheApi> {
   return requisitar<FichaDetalheApi>(`/fichas/${encodeURIComponent(id)}`)
 }
 
-export function urlArquivoFicha(id: string): string {
-  return `${API_URL}/fichas/${encodeURIComponent(id)}/arquivo`
+export function urlArquivoDocumento(documentoId: number): string {
+  return `${API_URL}/documentos/${documentoId}/arquivo`
 }
 
 export function salvarRascunhoFicha(id: string, revisao: unknown): Promise<void> {
