@@ -143,8 +143,9 @@
                     </select>
                   </td>
                   <td><input v-model="linha.destino" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.responsavelLiberacao"
-                      @input="marcarEditado(ficha.transfusoesConferencia)" />
+                  <td>
+                    <CampoColaborador v-model="linha.responsavelLiberacao"
+                      @update:model-value="marcarEditado(ficha.transfusoesConferencia)" />
                   </td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerTransfusao(indice)">
@@ -338,6 +339,7 @@ import {
 } from '@/services/api'
 import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
+import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
 
 
@@ -356,7 +358,8 @@ export default defineComponent({
   name: 'RevisarFichaView',
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
-    PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData
+    PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
+    CampoColaborador
   },
   setup() {
     const rota = useRoute()
