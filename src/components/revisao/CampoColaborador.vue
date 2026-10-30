@@ -6,6 +6,7 @@
       :list="idLista"
       placeholder="Digite 2 letras…"
       @input="aoDigitar"
+      @change="usarGrafiaCadastrada"
     />
     <datalist :id="idLista">
       <option v-for="colaborador in sugestoes" :key="colaborador.id" :value="colaborador.nome" />
@@ -68,6 +69,12 @@ export default defineComponent({
       emit('update:modelValue', (evento.target as HTMLInputElement).value)
     }
 
+    // Ao sair do campo: "mauro" vira "Mauro", igual ao cadastro.
+    function usarGrafiaCadastrada() {
+      const cadastrado = sugestoes.value.find(c => c.nome.toLowerCase() === nomeDigitado.value.toLowerCase())
+      if (cadastrado && cadastrado.nome !== props.modelValue) emit('update:modelValue', cadastrado.nome)
+    }
+
     async function cadastrar() {
       if (!window.confirm(`Cadastrar "${nomeDigitado.value}" como colaborador?`)) return
       cadastrando.value = true
@@ -83,7 +90,7 @@ export default defineComponent({
       }
     }
 
-    return { idLista, sugestoes, cadastrando, erro, podeCadastrar, aoDigitar, cadastrar }
+    return { idLista, sugestoes, cadastrando, erro, podeCadastrar, aoDigitar, cadastrar, usarGrafiaCadastrada }
   }
 })
 </script>
