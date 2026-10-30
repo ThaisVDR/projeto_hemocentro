@@ -130,10 +130,18 @@
                     <CampoData :model-value="linha.dataEnvio ?? undefined"
                       @update:model-value="valor => { linha.dataEnvio = valor ?? null; marcarEditado(ficha.transfusoesConferencia) }" />
                   </td>
-                  <td><input v-model="linha.tipoHemocomponente" class="curto"
+                  <td><input v-model="linha.tipoHemocomponente" class="curto" list="hemocomponentes"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td><input v-model="linha.numeroDoacao" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
-                  <td><input v-model="linha.grsRhd" @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
+                  <td>
+                    <select v-model="linha.grsRhd" @change="marcarEditado(ficha.transfusoesConferencia)">
+                      <option :value="null">—</option>
+                      <option v-if="linha.grsRhd && !gruposRh.includes(linha.grsRhd)" :value="linha.grsRhd">
+                        {{ linha.grsRhd }}
+                      </option>
+                      <option v-for="grupo in gruposRh" :key="grupo" :value="grupo">{{ grupo }}</option>
+                    </select>
+                  </td>
                   <td><input v-model="linha.volMl" class="curto" inputmode="numeric"
                       @input="marcarEditado(ficha.transfusoesConferencia)" /></td>
                   <td>
@@ -163,6 +171,9 @@
                 </tr>
               </tbody>
             </table>
+            <datalist id="hemocomponentes">
+              <option v-for="tipo in hemocomponentes" :key="tipo" :value="tipo" />
+            </datalist>
           </div>
           <button type="button" class="botao botao--leve" @click="adicionarTransfusao">
             <Plus :size="14" /> Adicionar envio
@@ -353,7 +364,7 @@ import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
-import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
+import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
 
 interface Mensagem {
@@ -416,6 +427,13 @@ export default defineComponent({
       ...ficha.pesquisas.map((pesquisa, i) => ({ numero: i + 3, titulo: pesquisa.documento })),
       { numero: ficha.pesquisas.length + 3, titulo: 'Pesquisa imuno-hematológica' }
     ])
+
+    // Sugestões de hemocomponente: siglas comuns + as que já aparecem nesta ficha (o campo continua livre).
+    const SIGLAS_HEMOCOMPONENTE = ['CH', 'CHD', 'CHDF', 'CHF', 'CHI', 'CP', 'CPAF', 'PFC', 'CRIO']
+    const hemocomponentes = computed(() => Array.from(new Set([
+      ...SIGLAS_HEMOCOMPONENTE,
+      ...ficha.transfusoes.map(t => t.tipoHemocomponente?.trim().toUpperCase()).filter((t): t is string => !!t)
+    ])))
 
     function irParaSecao(numero: number) {
       document.getElementById(`secao-${numero}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -653,7 +671,9 @@ export default defineComponent({
       opcoesAboRh: OPCOES_ABO_RH,
       opcoesGrupo: ['A', 'B', 'AB', 'O'].map(g => ({ valor: g, rotulo: g })),
       opcoesPositivoNegativo: ['Positivo', 'Negativo'].map(v => ({ valor: v, rotulo: v })),
-      opcoesSexo: OPCOES_SEXO
+      opcoesSexo: OPCOES_SEXO,
+      gruposRh: Object.values(ROTULO_ABO_RH) as string[],
+      hemocomponentes
     }
   }
 })
