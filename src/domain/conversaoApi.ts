@@ -83,8 +83,8 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   ih.anticorpos = extracao.pesquisas.flatMap(x =>
     extrairAnticorpos(x.especificidade || x.interpretacao).map(especificidade => ({
       data: x.dataPesquisa, metodo: null, especificidade, classe: null
-  }))
-)
+    }))
+  )
   if (ih.anticorpos.length > 0) ih.anticorposConferencia.estado = 'sugerido'
 
   return ficha

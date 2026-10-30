@@ -311,7 +311,7 @@ import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from 
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia,
-  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, FichaEmRevisao, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE
 } from '@/domain/revisao'
 import {
   aprovarFicha, buscarFicha, recusarFicha, salvarRascunhoFicha, sinalizarPendenciaFicha, urlArquivoDocumento
