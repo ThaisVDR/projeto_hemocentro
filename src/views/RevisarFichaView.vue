@@ -65,7 +65,14 @@
         </div>
         <LegendaEstados />
 
-        <SecaoRevisao titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
+        <nav class="indice" aria-label="Seções da ficha">
+          <button v-for="item in indiceSecoes" :key="item.numero" type="button" class="indice__item"
+            @click="irParaSecao(item.numero)">
+            <span>{{ item.numero }}</span> {{ item.titulo }}
+          </button>
+        </nav>
+
+        <SecaoRevisao :numero="1" titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
           <div class="grade">
             <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nome"
               v-bind="eventos(ficha.identificacao.nome)" />
@@ -98,7 +105,7 @@
           </div>
         </SecaoRevisao>
 
-        <SecaoRevisao titulo="Ficha transfusional" :pagina="1"
+        <SecaoRevisao :numero="2" titulo="Ficha transfusional" :pagina="1"
           subtitulo="Uma linha por envio de hemocomponente. NR = não realizado, não significa negativo."
           etiqueta="Registro transfusional">
           <div class="tabela-rolavel" @focusin="pagina = 1">
@@ -165,7 +172,7 @@
             @desfazer="desfazerConferencia(ficha.transfusoesConferencia)" />
         </SecaoRevisao>
 
-        <SecaoRevisao v-for="pesquisa in ficha.pesquisas" :key="pesquisa.documento"
+        <SecaoRevisao v-for="(pesquisa, i) in ficha.pesquisas" :key="pesquisa.documento" :numero="i + 3"
           :titulo="pesquisa.documento === 'ID-DiaPanel' ? 'Identificação de anticorpos' : 'Pesquisa de anticorpos irregulares'"
           :pagina="pesquisa.pagina"
           :subtitulo="`${pesquisa.documento} • matriz de antígenos do reagente vinculada ao lote do kit, não precisa ser transcrita`"
@@ -204,7 +211,7 @@
             @desfazer="desfazerConferencia(pesquisa.reacoesConferencia)" />
         </SecaoRevisao>
 
-        <SecaoRevisao titulo="Pesquisa imuno-hematológica" :pagina="4"
+        <SecaoRevisao :numero="ficha.pesquisas.length + 3" titulo="Pesquisa imuno-hematológica" :pagina="4"
           subtitulo="Grupo, fator Rh, anticorpos irregulares, TAD e fenotipagem eritrocitária"
           etiqueta="Resultados laboratoriais">
           <div class="grade">
@@ -401,6 +408,18 @@ export default defineComponent({
     )
 
     const statusFicha = computed(() => STATUS_FICHA[ficha.status])
+
+    // Mini-índice: mesma numeração das seções, para pular direto para uma delas.
+    const indiceSecoes = computed(() => [
+      { numero: 1, titulo: 'Identificação' },
+      { numero: 2, titulo: 'Ficha transfusional' },
+      ...ficha.pesquisas.map((pesquisa, i) => ({ numero: i + 3, titulo: pesquisa.documento })),
+      { numero: ficha.pesquisas.length + 3, titulo: 'Pesquisa imuno-hematológica' }
+    ])
+
+    function irParaSecao(numero: number) {
+      document.getElementById(`secao-${numero}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
 
     function trocarArquivo(novo: ArquivoDocumento | null) {
       if (arquivo.value?.url.startsWith('blob:')) URL.revokeObjectURL(arquivo.value.url)
@@ -623,7 +642,7 @@ export default defineComponent({
     return {
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
       fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao,
-      titulo, subtitulo, statusFicha, dadosResumo,
+      titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
@@ -761,6 +780,51 @@ export default defineComponent({
 
 .alerta svg {
   flex-shrink: 0;
+}
+
+.indice {
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  box-shadow: 0 4px 12px rgba(31, 35, 40, 0.06);
+}
+
+.indice__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cor-fundo);
+  font: inherit;
+  font-size: 12px;
+  color: var(--cor-texto);
+  cursor: pointer;
+}
+
+.indice__item:hover {
+  background: var(--cor-primaria-suave);
+  color: var(--cor-primaria);
+}
+
+.indice__item span {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--cor-primaria);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .grade {
