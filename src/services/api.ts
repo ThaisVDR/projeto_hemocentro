@@ -245,6 +245,18 @@ export function cadastrarColaborador(nome: string): Promise<ColaboradorApi> {
   return enviarJson<ColaboradorApi>('/colaboradores', 'POST', { nome: nome.trim() })
 }
 
+// ---------- Cidades ----------
+
+export interface CidadeApi {
+  id: number
+  nomeCidade: string
+  estados: { uf: string }
+}
+
+export function buscarCidades(busca: string): Promise<CidadeApi[]> {
+  return requisitar<CidadeApi[]>(`/cidades?busca=${encodeURIComponent(busca)}`)
+}
+
 // ---------- Autenticação ----------
 
 export interface RespostaLoginApi {
