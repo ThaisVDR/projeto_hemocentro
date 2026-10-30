@@ -63,6 +63,7 @@
             (DiaCell, DiaPanel, fenotipagem) devem ser transcritos literalmente: nt, NR e vazio não são negativo.
           </span>
         </div>
+        <LegendaEstados />
 
         <SecaoRevisao titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
           <div class="grade">
@@ -344,6 +345,7 @@ import {
 import { tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
+import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO } from '@/domain/traducao'
 
 
@@ -363,7 +365,7 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador
+    CampoColaborador, LegendaEstados
   },
   setup() {
     const rota = useRoute()
