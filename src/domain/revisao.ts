@@ -18,6 +18,7 @@ export interface Conferencia {
   estado: EstadoCampo
   pagina: number
   nota?: string
+  estadoAnterior?: EstadoCampo
 }
 
 export interface CampoRevisavel extends Conferencia {
@@ -241,7 +242,15 @@ export function criarFichaVazia(): FichaEmRevisao {
 }
 
 export function confirmarConferencia(conferencia: Conferencia): void {
+  conferencia.estadoAnterior = conferencia.estado
   conferencia.estado = 'conferido'
+}
+
+// Volta ao estado de antes da conferência (clique sem querer no ✓).
+export function desfazerConferencia(conferencia: Conferencia): void {
+  if (conferencia.estado !== 'conferido') return
+  conferencia.estado = conferencia.estadoAnterior ?? 'sugerido'
+  conferencia.estadoAnterior = undefined
 }
 
 function ehConferencia(valor: unknown): valor is Conferencia {

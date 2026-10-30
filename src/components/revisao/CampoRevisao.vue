@@ -6,67 +6,36 @@
     </div>
 
     <div class="campo__controle">
-      <select
-        v-if="opcoes"
-        :id="id"
-        :value="campo.valor ?? ''"
-        @change="aoAlterar"
-        @focus="$emit('foco', campo.pagina)"
-      >
+      <select v-if="opcoes" :id="id" :value="campo.valor ?? ''" @change="aoAlterar"
+        @focus="$emit('foco', campo.pagina)">
         <option value="">—</option>
         <option v-for="opcao in opcoes" :key="opcao.valor" :value="opcao.valor">
           {{ opcao.rotulo }}
         </option>
       </select>
-      <CampoData
-        v-else-if="tipo === 'date'"
-        :id="id"
-        :model-value="campo.valor ?? ''"
-        @update:model-value="$emit('atualizar', $event)"
-        @focus="$emit('foco', campo.pagina)"
-      />
+      <CampoData v-else-if="tipo === 'date'" :id="id" :model-value="campo.valor ?? ''"
+        @update:model-value="$emit('atualizar', $event)" @focus="$emit('foco', campo.pagina)" />
 
-      <CampoColaborador
-        v-else-if="tipo === 'colaborador'"
-        :model-value="campo.valor"
-        @update:model-value="$emit('atualizar', $event)"
-        @focusin="$emit('foco', campo.pagina)"
-      />
+      <CampoColaborador v-else-if="tipo === 'colaborador'" :model-value="campo.valor"
+        @update:model-value="$emit('atualizar', $event)" @focusin="$emit('foco', campo.pagina)" />
 
-      <input
-        v-else
-        :id="id"
-        :type="tipo"
-        :value="campo.valor ?? ''"
-        :placeholder="campo.estado === 'nao_consta' ? 'Não consta no original' : ''"
-        @change="aoAlterar"
-        @focus="$emit('foco', campo.pagina)"
-      />
-      <button
-        v-if="podeConfirmar"
-        type="button"
-        class="campo__botao campo__botao--confirmar"
-        title="Confirmar conforme o original"
-        @click="$emit('confirmar')"
-      >
+      <input v-else :id="id" :type="tipo" :value="campo.valor ?? ''"
+        :placeholder="campo.estado === 'nao_consta' ? 'Não consta no original' : ''" @change="aoAlterar"
+        @focus="$emit('foco', campo.pagina)" />
+      <button v-if="podeConfirmar" type="button" class="campo__botao campo__botao--confirmar"
+        title="Confirmar conforme o original" @click="$emit('confirmar')">
         <Check :size="14" />
       </button>
-      <button
-        v-if="campo.estado === 'vazio'"
-        type="button"
-        class="campo__botao"
-        title="Marcar como não consta no original"
-        @click="$emit('nao-consta')"
-      >
+      <button v-if="campo.estado === 'conferido'" type="button" class="campo__botao" title="Desfazer conferência"
+        @click="$emit('desfazer-conferencia')">
+        <Undo2 :size="14" />
+      </button>
+      <button v-if="campo.estado === 'vazio'" type="button" class="campo__botao"
+        title="Marcar como não consta no original" @click="$emit('nao-consta')">
         <Minus :size="14" />
       </button>
-      <button
-        v-if="campo.estado === 'nao_consta'"
-        type="button"
-        class="campo__botao"
-        title="Desfazer “não consta no original”"
-        @click="$emit('desfazer-nao-consta')"
-      >
+      <button v-if="campo.estado === 'nao_consta'" type="button" class="campo__botao"
+        title="Desfazer “não consta no original”" @click="$emit('desfazer-nao-consta')">
         <Undo2 :size="14" />
       </button>
     </div>
@@ -97,7 +66,7 @@ export default defineComponent({
     tipo: { type: String, default: 'text' },
     opcoes: { type: Array as PropType<OpcaoCampo[]>, default: undefined }
   },
-  emits: ['atualizar', 'confirmar', 'nao-consta', 'desfazer-nao-consta', 'foco'],
+  emits: ['atualizar', 'confirmar', 'desfazer-conferencia', 'nao-consta', 'desfazer-nao-consta', 'foco'],
   setup(props, { emit }) {
     const id = `campo-${++contador}`
 
@@ -226,8 +195,7 @@ export default defineComponent({
   color: var(--cor-alerta);
 }
 
-.campo__controle > .campo-colaborador {
+.campo__controle>.campo-colaborador {
   flex: 1;
 }
 </style>
-

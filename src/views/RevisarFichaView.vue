@@ -160,9 +160,8 @@
             <Plus :size="14" /> Adicionar envio
           </button>
           <ConferenciaTabela :conferencia="ficha.transfusoesConferencia"
-            @confirmar="confirmar(ficha.transfusoesConferencia)" 
-            @desfazer="desfazerConferencia(ficha.transfusoesConferencia)"
-            />
+            @confirmar="confirmar(ficha.transfusoesConferencia)"
+            @desfazer="desfazerConferencia(ficha.transfusoesConferencia)" />
         </SecaoRevisao>
 
         <SecaoRevisao v-for="pesquisa in ficha.pesquisas" :key="pesquisa.documento"
@@ -200,7 +199,7 @@
             </table>
           </div>
           <ConferenciaTabela :conferencia="pesquisa.reacoesConferencia"
-            @confirmar="confirmar(pesquisa.reacoesConferencia)" 
+            @confirmar="confirmar(pesquisa.reacoesConferencia)"
             @desfazer="desfazerConferencia(pesquisa.reacoesConferencia)" />
         </SecaoRevisao>
 
@@ -231,8 +230,8 @@
           </div>
           <p class="legenda">0 = negativo • w = fraco • 1+ a 4+ = positivo • nt = não testado • NR = não realizado.
             Vazio não é negativo.</p>
-          <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)" 
-          @desfazer="desfazerConferencia(ih.fenotipoConferencia)" />
+          <ConferenciaTabela :conferencia="ih.fenotipoConferencia" @confirmar="confirmar(ih.fenotipoConferencia)"
+            @desfazer="desfazerConferencia(ih.fenotipoConferencia)" />
 
           <h4 class="subtitulo">Identificação de anticorpos irregulares</h4>
           <div class="tabela-rolavel" @focusin="pagina = 4">
@@ -254,8 +253,7 @@
                   </td>
                   <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
-                      @input="marcarEditado(ih.anticorposConferencia)" 
-                      @desfazer="desfazerConferencia(ih.anticorposConferencia)" /></td>
+                      @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.classe" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerAnticorpo(indice)">
@@ -269,14 +267,16 @@
           <button type="button" class="botao botao--leve" @click="adicionarAnticorpo">
             <Plus :size="14" /> Adicionar anticorpo
           </button>
-          <ConferenciaTabela :conferencia="ih.anticorposConferencia" @confirmar="confirmar(ih.anticorposConferencia)" />
+          <ConferenciaTabela :conferencia="ih.anticorposConferencia" @confirmar="confirmar(ih.anticorposConferencia)"
+            @desfazer="desfazerConferencia(ih.anticorposConferencia)" />
 
           <div class="grade">
             <CampoRevisao :campo="ih.amostra" v-bind="eventos(ih.amostra)" />
             <CampoRevisao :campo="ih.metodologia" v-bind="eventos(ih.metodologia)" />
             <CampoRevisao :campo="ih.dataExame" tipo="date" v-bind="eventos(ih.dataExame)" />
             <CampoRevisao :campo="ih.solicitante" v-bind="eventos(ih.solicitante)" />
-            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico" tipo="colaborador" v-bind="eventos(ih.responsavelTecnico)" />
+            <CampoRevisao class="grade__inteira" :campo="ih.responsavelTecnico" tipo="colaborador"
+              v-bind="eventos(ih.responsavelTecnico)" />
           </div>
         </SecaoRevisao>
       </div>
@@ -335,7 +335,7 @@ import {
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
-  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia, 
+  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia,
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
