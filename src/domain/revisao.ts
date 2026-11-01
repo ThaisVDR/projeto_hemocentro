@@ -326,3 +326,11 @@ export function lerResultadoTeste(texto?: string | null): ResultadoTeste | null 
   if (normalizado.startsWith('NEG') || normalizado === '-') return 'NEGATIVO'
   return null
 }
+
+// Motivos aceitos pelo backend para recusar uma ficha (MOTIVOS_RECUSA).
+export type MotivoRecusa = 'ILEGIVEL' | 'OUTRO_DOCUMENTO'
+
+export const MOTIVOS_RECUSA: { valor: MotivoRecusa; rotulo: string }[] = [
+  { valor: 'ILEGIVEL', rotulo: 'Ilegível' },
+  { valor: 'OUTRO_DOCUMENTO', rotulo: 'Não é uma ficha (outro documento)' }
+]

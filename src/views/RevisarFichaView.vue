@@ -314,7 +314,14 @@
         <UserCheck :size="18" />
         <div>
           <strong>Conferência humana obrigatória</strong>
-          <small v-if="conferencia.podeAprovar">
+          <small v-if="!estaAutenticado" class="acoes__aviso">
+            Faça login para salvar, recusar ou aprovar.
+            <router-link :to="{ name: 'login' }">Entrar</router-link>
+          </small>
+          <small v-else-if="!revisaoEhMinha && !finalizada" class="acoes__aviso">
+            Inicie ou assuma a revisão (no topo da página) para salvar, recusar ou aprovar.
+          </small>
+          <small v-else-if="conferencia.podeAprovar">
             {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de
             aprovar.
           </small>
@@ -337,6 +344,7 @@
       </div>
     </footer>
   </section>
+  <DialogoRecusa v-if="recusando" @confirmar="confirmarRecusa" @fechar="recusando = false" />
 </template>
 
 <script lang="ts">
@@ -358,18 +366,19 @@ import {
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
-  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia,
+  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia, MotivoRecusa,
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
   aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao
 } from '@/services/api'
-import { tokenAtual } from '@/services/sessao'
+import { estaAutenticado, tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import { avisar } from '@/composables/useAvisos'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
+import DialogoRecusa from '@/components/revisao/DialogoRecusa.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
 
@@ -389,7 +398,7 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador, CampoCidade, LegendaEstados
+    CampoColaborador, CampoCidade, LegendaEstados, DialogoRecusa
   },
   setup() {
     const rota = useRoute()
@@ -404,6 +413,7 @@ export default defineComponent({
     const revisor = ref<{ id: number; nome: string } | null>(null)
     const original = ref<FichaEmRevisao | null>(null)
     const indicePesquisa = ref<number | null>(null)
+    const recusando = ref(false)
     const revisaoEhMinha = computed(() =>
       ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
     )
@@ -647,25 +657,34 @@ export default defineComponent({
         id => sinalizarPendenciaFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila.' }
       )
-      if (ok) ficha.status = 'COM_PENDENCIA'
+      if (ok) {
+        ficha.status = 'COM_PENDENCIA'
+        revisor.value = null
+      }
     }
 
-    async function recusar() {
-      const motivo = window.prompt('Por que esta ficha está sendo recusada? (ex.: documento ilegível ou de outro tipo)')
-      if (!motivo) return
+    function recusar() {
+      recusando.value = true
+    }
+
+    async function confirmarRecusa(escolha: { motivo: MotivoRecusa; observacao: string | null }) {
+      recusando.value = false
       const ok = await executar(
-        id => recusarFicha(id, motivo),
-        { tipo: 'alerta', texto: 'Ficha recusada. Ela não entra no prontuário.' }
+        id => recusarFicha(id, escolha.motivo, escolha.observacao),
+        { tipo: 'alerta', texto: 'Ficha recusada. Ela saiu da fila e não entra no prontuário.' }
       )
-      if (ok) ficha.status = 'RECUSADA'
+      if (ok) {
+        ficha.status = 'RECUSADA'
+        revisor.value = null
+      }
     }
 
     return {
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
-      fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao,
+      fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao, estaAutenticado,
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
-      adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar,
+      adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar, recusando, confirmarRecusa,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
@@ -997,6 +1016,7 @@ export default defineComponent({
 .acoes {
   position: sticky;
   bottom: 12px;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1008,6 +1028,11 @@ export default defineComponent({
   display: flex;
   gap: 12px;
   color: var(--cor-primaria);
+}
+
+.acoes__aviso {
+  color: var(--cor-alerta);
+  font-weight: 600;
 }
 
 .acoes__texto strong {
