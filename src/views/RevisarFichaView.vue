@@ -345,6 +345,7 @@
     </footer>
   </section>
   <DialogoRecusa v-if="recusando" @confirmar="confirmarRecusa" @fechar="recusando = false" />
+  <DialogoPendencia v-if="pendenciando" @confirmar="confirmarPendencia" @fechar="pendenciando = false" />
 </template>
 
 <script lang="ts">
@@ -379,6 +380,7 @@ import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
 import DialogoRecusa from '@/components/revisao/DialogoRecusa.vue'
+import DialogoPendencia from '@/components/revisao/DialogoPendencia.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
 
@@ -398,7 +400,7 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador, CampoCidade, LegendaEstados, DialogoRecusa
+    CampoColaborador, CampoCidade, LegendaEstados, DialogoRecusa, DialogoPendencia
   },
   setup() {
     const rota = useRoute()
@@ -414,6 +416,7 @@ export default defineComponent({
     const original = ref<FichaEmRevisao | null>(null)
     const indicePesquisa = ref<number | null>(null)
     const recusando = ref(false)
+    const pendenciando = ref(false)
     const revisaoEhMinha = computed(() =>
       ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
     )
@@ -650,9 +653,12 @@ export default defineComponent({
       }
     }
 
-    async function sinalizarPendencia() {
-      const motivo = window.prompt('Qual é a pendência desta ficha?')
-      if (!motivo) return
+    function sinalizarPendencia() {
+      pendenciando.value = true
+    }
+
+    async function confirmarPendencia(motivo: string) {
+      pendenciando.value = false
       const ok = await executar(
         id => sinalizarPendenciaFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila.' }
@@ -685,6 +691,7 @@ export default defineComponent({
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar, recusando, confirmarRecusa,
+      pendenciando, confirmarPendencia,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
