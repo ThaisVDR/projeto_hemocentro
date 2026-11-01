@@ -1,18 +1,7 @@
 <template>
   <div class="campo-cidade">
-    <input
-      class="campo-cidade__entrada"
-      :value="modelValue ?? ''"
-      :list="idLista"
-      placeholder="Cidade / UF"
-      @input="aoDigitar"
-      @change="usarNomeOficial"
-      @focus="emFoco = true"
-      @blur="emFoco = false"
-    />
-    <datalist :id="idLista">
-      <option v-for="cidade in sugestoes" :key="cidade.id" :value="nomeComUf(cidade)" />
-    </datalist>
+    <CampoBusca :model-value="modelValue" :opcoes="nomes" placeholder="Cidade / UF"
+      @update:model-value="valor => $emit('update:modelValue', valor)" @foco="emFoco = true" @sair="aoSair" />
     <small v-if="naoEncontrada && !emFoco" class="campo-cidade__aviso">Cidade não encontrada na lista</small>
   </div>
 </template>
@@ -20,8 +9,8 @@
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import { buscarCidades, CidadeApi } from '@/services/api'
-
-let proximoId = 0
+import { semAcento } from '@/utils/formatacao'
+import CampoBusca from './CampoBusca.vue'
 
 function nomeComUf(cidade: CidadeApi): string {
   return `${cidade.nomeCidade} / ${cidade.estados.uf}`
@@ -29,12 +18,12 @@ function nomeComUf(cidade: CidadeApi): string {
 
 export default defineComponent({
   name: 'CampoCidade',
+  components: { CampoBusca },
   props: {
     modelValue: { type: String as PropType<string | null>, default: null }
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
-    const idLista = `cidades-${++proximoId}`
     const sugestoes = ref<CidadeApi[]>([])
     const buscou = ref(false)
     const emFoco = ref(false)
@@ -44,8 +33,9 @@ export default defineComponent({
 
     const naoEncontrada = computed(() =>
       buscou.value && nomeDigitado.value.length >= 2 &&
-      !sugestoes.value.some(c => c.nomeCidade.toLowerCase() === nomeDigitado.value.toLowerCase())
+      !sugestoes.value.some(c => semAcento(c.nomeCidade) === semAcento(nomeDigitado.value))
     )
+    const nomes = computed(() => sugestoes.value.map(nomeComUf))
 
     async function procurar(termo: string) {
       try {
@@ -67,16 +57,14 @@ export default defineComponent({
       espera = window.setTimeout(() => procurar(termo), 300)
     }, { immediate: true })
 
-    function aoDigitar(evento: Event) {
-      emit('update:modelValue', (evento.target as HTMLInputElement).value)
-    }
-
-    function usarNomeOficial() {
-      const cidade = sugestoes.value.find(c => c.nomeCidade.toLowerCase() === nomeDigitado.value.toLowerCase())
+    // Ao sair do campo: "cuiaba" vira "Cuiabá / MT", igual à lista oficial.
+    function aoSair() {
+      emFoco.value = false
+      const cidade = sugestoes.value.find(c => semAcento(c.nomeCidade) === semAcento(nomeDigitado.value))
       if (cidade && nomeComUf(cidade) !== props.modelValue) emit('update:modelValue', nomeComUf(cidade))
     }
 
-    return { idLista, sugestoes, emFoco, naoEncontrada, nomeComUf, aoDigitar, usarNomeOficial }
+    return { nomes, emFoco, naoEncontrada, aoSair }
   }
 })
 </script>
@@ -86,17 +74,6 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.campo-cidade__entrada {
-  width: 100%;
-  min-width: 140px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--cor-borda);
-  border-radius: 6px;
-  font: inherit;
-  background: var(--cor-superficie);
 }
 
 .campo-cidade__aviso {

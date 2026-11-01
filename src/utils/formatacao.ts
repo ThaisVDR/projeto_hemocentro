@@ -41,3 +41,8 @@ export function calcularIdade(iso?: string | null, hoje = new Date()): number | 
 
   return idade
 }
+
+// Para comparar nomes sem diferenciar maiúsculas nem acentos: "Cuiabá" e "cuiaba" ficam iguais.
+export function semAcento(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}

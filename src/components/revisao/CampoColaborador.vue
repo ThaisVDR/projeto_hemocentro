@@ -1,18 +1,7 @@
 <template>
   <div class="campo-colaborador">
-    <input
-      class="campo-colaborador__entrada"
-      :value="modelValue ?? ''"
-      :list="idLista"
-      placeholder="Digite 2 letras…"
-      @input="aoDigitar"
-      @change="usarGrafiaCadastrada"
-      @focus="emFoco = true"
-      @blur="emFoco = false"
-    />
-    <datalist :id="idLista">
-      <option v-for="colaborador in sugestoes" :key="colaborador.id" :value="colaborador.nome" />
-    </datalist>
+    <CampoBusca :model-value="modelValue" :opcoes="nomes" placeholder="Digite 2 letras…"
+      @update:model-value="valor => $emit('update:modelValue', valor)" @foco="emFoco = true" @sair="aoSair" />
     <button v-if="podeCadastrar && !emFoco" type="button" class="campo-colaborador__cadastrar" :disabled="cadastrando"
       @click="cadastrar">
       + Cadastrar
@@ -24,17 +13,17 @@
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import { buscarColaboradores, cadastrarColaborador, ColaboradorApi } from '@/services/api'
-
-let proximoId = 0
+import { semAcento } from '@/utils/formatacao'
+import CampoBusca from './CampoBusca.vue'
 
 export default defineComponent({
   name: 'CampoColaborador',
+  components: { CampoBusca },
   props: {
     modelValue: { type: String as PropType<string | null>, default: null }
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
-    const idLista = `colaboradores-${++proximoId}`
     const sugestoes = ref<ColaboradorApi[]>([])
     const cadastrando = ref(false)
     const erro = ref<string | null>(null)
@@ -43,11 +32,12 @@ export default defineComponent({
     let espera: number | undefined
 
     const nomeDigitado = computed(() => (props.modelValue ?? '').trim())
+    const nomes = computed(() => sugestoes.value.map(c => c.nome))
 
-    // Já cadastrado = algum nome da lista igual ao digitado (sem diferenciar maiúsculas).
+    // Já cadastrado = algum nome da lista igual ao digitado (sem diferenciar maiúsculas nem acentos).
     const podeCadastrar = computed(() =>
       nomeDigitado.value.length >= 2 &&
-      !sugestoes.value.some(c => c.nome.toLowerCase() === nomeDigitado.value.toLowerCase())
+      !sugestoes.value.some(c => semAcento(c.nome) === semAcento(nomeDigitado.value))
     )
 
     async function procurar(termo: string) {
@@ -69,13 +59,10 @@ export default defineComponent({
       espera = window.setTimeout(() => procurar(termo), 300)
     }, { immediate: true })
 
-    function aoDigitar(evento: Event) {
-      emit('update:modelValue', (evento.target as HTMLInputElement).value)
-    }
-
-    // Ao sair do campo: "mauro" vira "Mauro", igual ao cadastro.
-    function usarGrafiaCadastrada() {
-      const cadastrado = sugestoes.value.find(c => c.nome.toLowerCase() === nomeDigitado.value.toLowerCase())
+    // Ao sair do campo: "marcia" vira "Márcia", igual ao cadastro.
+    function aoSair() {
+      emFoco.value = false
+      const cadastrado = sugestoes.value.find(c => semAcento(c.nome) === semAcento(nomeDigitado.value))
       if (cadastrado && cadastrado.nome !== props.modelValue) emit('update:modelValue', cadastrado.nome)
     }
 
@@ -94,7 +81,7 @@ export default defineComponent({
       }
     }
 
-    return { idLista, sugestoes, cadastrando, erro, emFoco, podeCadastrar, aoDigitar, cadastrar, usarGrafiaCadastrada }
+    return { nomes, cadastrando, erro, emFoco, podeCadastrar, aoSair, cadastrar }
   }
 })
 </script>
@@ -104,17 +91,6 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.campo-colaborador__entrada {
-  width: 100%;
-  min-width: 110px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--cor-borda);
-  border-radius: 6px;
-  font: inherit;
-  background: var(--cor-superficie);
 }
 
 .campo-colaborador__cadastrar {
