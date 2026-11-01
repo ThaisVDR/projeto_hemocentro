@@ -54,6 +54,7 @@ export interface FichaExtraidaApi {
     diagnostico: string | null
     nomeMae: string | null
     municipio: string | null
+    ufMunicipio: string | null
   }
   transfusoes: {
     dataEnvio: string | null

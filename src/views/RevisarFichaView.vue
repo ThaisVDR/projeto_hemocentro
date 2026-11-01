@@ -88,7 +88,8 @@
               v-bind="eventos(ficha.identificacao.nomeMae)" />
             <CampoRevisao :campo="ficha.identificacao.prontuario" v-bind="eventos(ficha.identificacao.prontuario)" />
             <CampoRevisao :campo="ficha.identificacao.cartaoSus" v-bind="eventos(ficha.identificacao.cartaoSus)" />
-            <CampoRevisao :campo="ficha.identificacao.municipio" v-bind="eventos(ficha.identificacao.municipio)" />
+            <CampoRevisao :campo="ficha.identificacao.municipio" tipo="cidade"
+              v-bind="eventos(ficha.identificacao.municipio)" />
             <CampoRevisao :campo="ficha.identificacao.diagnostico" v-bind="eventos(ficha.identificacao.diagnostico)" />
           </div>
 
