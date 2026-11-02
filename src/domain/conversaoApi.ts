@@ -53,7 +53,7 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   sugerir(id.nomeMae, p.nomeMae)
   sugerir(id.sexo, p.sexo)
   sugerir(id.cartaoSus, p.cartaoSus)
-  sugerir(id.municipio, p.municipio)
+  sugerir(id.municipio, [p.municipio, p.ufMunicipio].filter(Boolean).join(' / '))
 
   if (extracao.transfusoes.length > 0) {
     ficha.transfusoes = extracao.transfusoes.map(t => ({
@@ -116,14 +116,22 @@ const CAMINHOS_PACIENTE: Record<keyof IdentificacaoRevisao, string> = {
 // Só os campos da identificação que mudaram desde a última vez que a ficha veio do backend.
 export function alteracoesDaIdentificacao(antes: FichaEmRevisao, agora: FichaEmRevisao): AlteracaoApi[] {
   const campos = Object.keys(CAMINHOS_PACIENTE) as (keyof IdentificacaoRevisao)[]
-  return campos
+   return campos
     .filter(campo => agora.identificacao[campo].valor !== antes.identificacao[campo].valor)
-    .map(campo => {
+    .flatMap(campo => {
       const texto = agora.identificacao[campo].valor?.trim() || null
-      return {
+      if (campo === 'municipio') {
+        // "Cuiabá / MT" → município e UF separados, como o backend guarda.
+        const [cidade, uf] = (texto ?? '').split('/').map(parte => parte.trim())
+        return [
+          { campo: 'paciente.municipio', valor: cidade || null },
+          { campo: 'paciente.ufMunicipio', valor: uf || null }
+        ]
+      }
+      return [{
         campo: CAMINHOS_PACIENTE[campo],
         valor: campo === 'prontuario' && texto ? Number(texto) : texto
-      }
+      }]
     })
 }
 

@@ -21,6 +21,9 @@
       <CampoColaborador v-else-if="tipo === 'colaborador'" :model-value="campo.valor"
         @update:model-value="$emit('atualizar', $event)" @focusin="$emit('foco', campo.pagina)" />
 
+      <CampoCidade v-else-if="tipo === 'cidade'" :model-value="campo.valor"
+        @update:model-value="$emit('atualizar', $event)" @focusin="$emit('foco', campo.pagina)" />
+
       <input v-else :id="id" :type="tipo" :value="campo.valor ?? ''"
         :placeholder="campo.estado === 'nao_consta' ? 'Não consta no original' : ''" @change="aoAlterar"
         @focus="$emit('foco', campo.pagina)" />
@@ -53,6 +56,7 @@ import { CampoRevisavel } from '@/domain/revisao'
 import CampoData from '@/components/CampoData.vue'
 import { estadoCampo } from './estadosCampo'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
+import CampoCidade from '@/components/revisao/CampoCidade.vue'
 
 export interface OpcaoCampo {
   valor: string
@@ -63,7 +67,7 @@ let contador = 0
 
 export default defineComponent({
   name: 'CampoRevisao',
-  components: { Check, Minus, Undo2, CampoData, CampoColaborador },
+  components: { Check, Minus, Undo2, CampoData, CampoColaborador, CampoCidade },
   props: {
     campo: { type: Object as PropType<CampoRevisavel>, required: true },
     tipo: { type: String, default: 'text' },
@@ -194,7 +198,8 @@ export default defineComponent({
   color: var(--cor-alerta);
 }
 
-.campo__controle>.campo-colaborador {
+.campo__controle>.campo-colaborador,
+.campo__controle>.campo-cidade {
   flex: 1;
 }
 </style>

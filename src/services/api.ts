@@ -1,9 +1,6 @@
-// Comunicação com o Backend-Hemocentro.
-// As rotas seguem o fluxo combinado com o backend (upload → IA → ficha "digitalizada" →
-// revisão → aprovação). Se algum nome de rota mudar, ajuste somente este arquivo.
 import { Reacao, extrairAnticorpos, interpretarReacao } from '@/domain/fenotipo'
-import { StatusFicha } from '@/domain/revisao'
 import { tokenAtual } from '@/services/sessao'
+import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
 
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
 
@@ -54,6 +51,7 @@ export interface FichaExtraidaApi {
     diagnostico: string | null
     nomeMae: string | null
     municipio: string | null
+    ufMunicipio: string | null
   }
   transfusoes: {
     dataEnvio: string | null
@@ -115,6 +113,20 @@ export function buscarFicha(id: string): Promise<FichaDetalheApi> {
   return requisitar<FichaDetalheApi>(`/fichas/${encodeURIComponent(id)}`)
 }
 
+export interface PacienteSemelhanteApi {
+  id: string
+  nome: string
+  dataNascimento: string | null
+  nomeMae: string | null
+  prontuario: number | null
+  fichasValidadas: number
+  coincide: string[]
+}
+
+export function buscarSemelhantes(id: string): Promise<PacienteSemelhanteApi[]> {
+  return requisitar<PacienteSemelhanteApi[]>(`/fichas/${encodeURIComponent(id)}/semelhantes`)
+}
+
 export interface RevisaoApi {
   status: StatusFicha
   revisor: { id: number; nome: string }
@@ -128,7 +140,6 @@ export function assumirRevisao(id: string, justificativa: string | null): Promis
   return enviarJson<RevisaoApi>(`/fichas/${encodeURIComponent(id)}/assumir-revisao`, 'POST', { justificativa })
 }
 
-// Uma correção: "campo" é o caminho no dado lido pela IA, ex.: "paciente.sexo".
 export interface AlteracaoApi {
   campo: string
   valor: unknown
@@ -142,16 +153,30 @@ export function urlArquivoDocumento(documentoId: number): string {
   return `${API_URL}/documentos/${documentoId}/arquivo`
 }
 
-export function aprovarFicha(id: string, dados: unknown): Promise<void> {
-  return enviarJson(`/fichas/${encodeURIComponent(id)}/aprovar`, 'POST', dados)
+export interface AprovacaoApi {
+  status: StatusFicha
+  gravacao: {
+    pacienteId: string
+    pacienteCriado: boolean
+    transfusoesCriadas: number
+    pesquisasCriadas: number
+    kitsCriados: number
+  }
+  avisos: string[]
+}
+
+// Sem pacienteId, o backend cria um paciente novo; com ele, liga a ficha a esse paciente.
+export function aprovarFicha(id: string, pacienteId: string | null = null): Promise<AprovacaoApi> {
+  const corpo = pacienteId ? { pacienteId } : {}
+  return enviarJson<AprovacaoApi>(`/fichas/${encodeURIComponent(id)}/aprovar`, 'POST', corpo)
 }
 
 export function sinalizarPendenciaFicha(id: string, motivo: string): Promise<void> {
   return enviarJson(`/fichas/${encodeURIComponent(id)}/pendencia`, 'POST', { motivo })
 }
 
-export function recusarFicha(id: string, motivo: string): Promise<void> {
-  return enviarJson(`/fichas/${encodeURIComponent(id)}/recusar`, 'POST', { motivo })
+export function recusarFicha(id: string, motivo: MotivoRecusa, observacao: string | null): Promise<void> {
+  return enviarJson(`/fichas/${encodeURIComponent(id)}/recusar`, 'POST', { motivo, observacao })
 }
 
 // ---------- Upload (lotes) ----------
@@ -190,7 +215,6 @@ export function reprocessarDocumento(id: number): Promise<unknown> {
 
 // ---------- Fila de revisão ----------
 
-// Formato padrão das listas do backend: { itens, total, pagina, limite }.
 export interface ListaPaginadaApi<T> {
   itens: T[]
   total: number
@@ -378,7 +402,7 @@ interface FichaCompletaApi {
     municipio: string | null
   }
   ultimaValidacao: { fichaCodigo: string; validadoPor: string | null; validadoEm: string | null } | null
-  // Vem da pesquisa mais recente para a mais antiga.
+ 
   pesquisasImunoHematologicas: {
     dataPesquisa: string
     dFraco: string | null

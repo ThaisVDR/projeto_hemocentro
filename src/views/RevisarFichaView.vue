@@ -88,20 +88,37 @@
               v-bind="eventos(ficha.identificacao.nomeMae)" />
             <CampoRevisao :campo="ficha.identificacao.prontuario" v-bind="eventos(ficha.identificacao.prontuario)" />
             <CampoRevisao :campo="ficha.identificacao.cartaoSus" v-bind="eventos(ficha.identificacao.cartaoSus)" />
-            <CampoRevisao :campo="ficha.identificacao.municipio" v-bind="eventos(ficha.identificacao.municipio)" />
+            <CampoRevisao :campo="ficha.identificacao.municipio" tipo="cidade"
+              v-bind="eventos(ficha.identificacao.municipio)" />
             <CampoRevisao :campo="ficha.identificacao.diagnostico" v-bind="eventos(ficha.identificacao.diagnostico)" />
           </div>
 
-          <div v-if="ficha.cadastroSemelhante" class="semelhante">
+          <div v-if="semelhantes.length" class="semelhante">
             <Users :size="18" />
             <div>
-              <strong>1 cadastro semelhante • {{ ficha.cadastroSemelhante.prontuario }}</strong>
-              <small>{{ ficha.cadastroSemelhante.motivo }}</small>
+              <strong>Possível paciente já cadastrado</strong>
+              <small>Confira com o original. Se for a mesma pessoa, a ficha entra no prontuário dela.</small>
+
+              <label v-for="paciente in semelhantes" :key="paciente.id" class="semelhante__opcao">
+                <input v-model="pacienteEscolhido" type="radio" name="paciente" :value="paciente.id"
+                  :disabled="!revisaoEhMinha" />
+                <span>
+                  <b>{{ paciente.nome }}</b> • nasc. {{ formatarData(paciente.dataNascimento) || '—' }}
+                  • mãe: {{ paciente.nomeMae || '—' }} • prontuário {{ paciente.prontuario ?? '—' }}
+                  • {{ paciente.fichasValidadas }} ficha(s)
+                  <small>Coincide: {{paciente.coincide.map(c => rotulosCoincide[c]).join(', ')}}</small>
+                </span>
+                <router-link :to="{ name: 'prontuarios', params: { pacienteId: paciente.id } }" target="_blank">
+                  Ver prontuário
+                </router-link>
+              </label>
+
+              <label class="semelhante__opcao">
+                <input v-model="pacienteEscolhido" type="radio" name="paciente" :value="null"
+                  :disabled="!revisaoEhMinha" />
+                <span><b>É outra pessoa</b>: cadastrar um paciente novo</span>
+              </label>
             </div>
-            <router-link class="botao"
-              :to="{ name: 'prontuarios', params: { pacienteId: ficha.cadastroSemelhante.prontuario } }">
-              Comparar
-            </router-link>
           </div>
         </SecaoRevisao>
 
@@ -313,7 +330,17 @@
         <UserCheck :size="18" />
         <div>
           <strong>Conferência humana obrigatória</strong>
-          <small v-if="conferencia.podeAprovar">
+          <small v-if="!estaAutenticado" class="acoes__aviso">
+            Faça login para salvar, recusar ou aprovar.
+            <router-link :to="{ name: 'login' }">Entrar</router-link>
+          </small>
+          <small v-else-if="!revisaoEhMinha && !finalizada" class="acoes__aviso">
+            Inicie ou assuma a revisão (no topo da página) para salvar, recusar ou aprovar.
+          </small>
+          <small v-else-if="falta" class="acoes__aviso">
+            Indique se a ficha é de um paciente já cadastrado (na Identificação) antes de aprovar.
+          </small>
+          <small v-else-if="conferencia.podeAprovar">
             {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de
             aprovar.
           </small>
@@ -330,17 +357,19 @@
         <button type="button" class="botao" :disabled="salvando || !revisaoEhMinha" @click="salvarRascunho">Salvar
           rascunho</button>
         <button type="button" class="botao botao--primario"
-          :disabled="!conferencia.podeAprovar || salvando || !revisaoEhMinha" @click="aprovar">
+          :disabled="!conferencia.podeAprovar || salvando || !revisaoEhMinha || falta" @click="aprovar">
           <Check :size="14" /> Aprovar e salvar
         </button>
       </div>
     </footer>
   </section>
+  <DialogoRecusa v-if="recusando" @confirmar="confirmarRecusa" @fechar="recusando = false" />
+  <DialogoPendencia v-if="pendenciando" @confirmar="confirmarPendencia" @fechar="pendenciando = false" />
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
 } from 'lucide-vue-next'
@@ -352,23 +381,27 @@ import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/Docume
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
 import {
   alteracoesDaIdentificacao, alteracoesDaImunohematologia, alteracoesDasTransfusoes,
-  fichaDaExtracao, fichaParaEnvio, indicePesquisaPrincipal
+  fichaDaExtracao, indicePesquisaPrincipal
 } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
-  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia,
+  CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia, MotivoRecusa,
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
-  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao
+  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao,
+  iniciarRevisao, AlteracaoApi, buscarSemelhantes, PacienteSemelhanteApi
 } from '@/services/api'
-import { tokenAtual } from '@/services/sessao'
+import { estaAutenticado, tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
-import { avisar } from '@/composables/useAvisos'
+import { formatarData } from '@/utils/formatacao'
+import { avisar, fecharErros } from '@/composables/useAvisos'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
+import DialogoRecusa from '@/components/revisao/DialogoRecusa.vue'
+import DialogoPendencia from '@/components/revisao/DialogoPendencia.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
 
@@ -388,10 +421,11 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador, CampoCidade, LegendaEstados
+    CampoColaborador, CampoCidade, LegendaEstados, DialogoRecusa, DialogoPendencia
   },
   setup() {
     const rota = useRoute()
+    const roteador = useRouter()
     const ficha = reactive(criarFichaVazia())
     const ih = computed(() => ficha.imunohematologia)
     const pagina = ref(1)
@@ -403,6 +437,12 @@ export default defineComponent({
     const revisor = ref<{ id: number; nome: string } | null>(null)
     const original = ref<FichaEmRevisao | null>(null)
     const indicePesquisa = ref<number | null>(null)
+    const recusando = ref(false)
+    const pendenciando = ref(false)
+    const semelhantes = ref<PacienteSemelhanteApi[]>([])
+    // undefined = ainda não escolheu; null = é outra pessoa (paciente novo); texto = id do paciente existente.
+    const pacienteEscolhido = ref<string | null | undefined>(undefined)
+    const falta = computed(() => semelhantes.value.length > 0 && pacienteEscolhido.value === undefined)
     const revisaoEhMinha = computed(() =>
       ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
     )
@@ -461,6 +501,7 @@ export default defineComponent({
         revisor.value = null
         original.value = null
         indicePesquisa.value = null
+        semelhantes.value = []
         trocarArquivo(null)
         return
       }
@@ -471,6 +512,7 @@ export default defineComponent({
         original.value = fichaDaExtracao(detalhe)
         indicePesquisa.value = indicePesquisaPrincipal(detalhe)
         revisor.value = detalhe.revisor
+        carregarSemelhantes()
         const nomeArquivo = detalhe.documento.nomeOriginal
         trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
         if (detalhe.erroLeitura) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erroLeitura}` }
@@ -611,20 +653,64 @@ export default defineComponent({
     }
 
     async function aprovar() {
-      const ok = await executar(
-        id => aprovarFicha(id, fichaParaEnvio(ficha)),
-        { tipo: 'sucesso', texto: 'Ficha aprovada e gravada no prontuário do paciente.' }
-      )
-      if (ok) ficha.status = 'VALIDADA'
+      if (!fichaId.value) return
+      salvando.value = true
+      try {
+        // O backend aprova o que está gravado nele: primeiro salva as correções pendentes.
+        const alteracoes = alteracoesPendentes()
+        if (alteracoes.length > 0) {
+          await salvarAlteracoes(fichaId.value, alteracoes)
+          marcarComoSalvo(alteracoes)
+        }
+
+        const resultado = await aprovarFicha(fichaId.value, pacienteEscolhido.value ?? null)
+        ficha.status = 'VALIDADA'
+        revisor.value = null
+
+        const g = resultado.gravacao
+        const paciente = g.pacienteCriado ? 'Paciente novo cadastrado' : 'Ficha ligada ao paciente já cadastrado'
+        fecharErros()
+        avisar('sucesso', `Ficha aprovada. ${paciente}; ${g.transfusoesCriadas} transfusão(ões) e ` +
+          `${g.pesquisasCriadas} pesquisa(s) gravadas no prontuário.`)
+        resultado.avisos.forEach(aviso => avisar('alerta', aviso))
+
+        roteador.push({ name: 'prontuarios', params: { pacienteId: g.pacienteId } })
+      } catch (e) {
+        avisar('erro', (e as Error).message)
+      } finally {
+        salvando.value = false
+      }
     }
 
-    async function salvarRascunho() {
-      if (!original.value) return
-      const alteracoes = [
+    // O que mudou desde a última vez que a ficha foi gravada no backend.
+    function alteracoesPendentes(): AlteracaoApi[] {
+      if (!original.value) return []
+      return [
         ...alteracoesDaIdentificacao(original.value, ficha),
         ...alteracoesDasTransfusoes(original.value.transfusoes, ficha.transfusoes),
         ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value)
       ]
+    }
+
+    // Depois de gravar: a "foto do antes" passa a ser a ficha como está agora.
+    function marcarComoSalvo(alteracoes: AlteracaoApi[]) {
+      original.value = JSON.parse(JSON.stringify(ficha))
+      if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
+      carregarSemelhantes()
+    }
+
+    async function carregarSemelhantes() {
+      if (!fichaId.value) return
+      try {
+        semelhantes.value = await buscarSemelhantes(fichaId.value)
+      } catch {
+        semelhantes.value = []
+      }
+      pacienteEscolhido.value = undefined
+    }
+
+    async function salvarRascunho() {
+      const alteracoes = alteracoesPendentes()
       if (alteracoes.length === 0) {
         avisar('info', 'Nada foi alterado desde o último salvamento.')
         return
@@ -633,38 +719,48 @@ export default defineComponent({
         id => salvarAlteracoes(id, alteracoes),
         { tipo: 'sucesso', texto: `${alteracoes.length} campo(s) salvo(s). A ficha continua com você.` }
       )
-      if (ok) {
-        original.value = JSON.parse(JSON.stringify(ficha))
-        if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
-      }
+      if (ok) marcarComoSalvo(alteracoes)
     }
 
-    async function sinalizarPendencia() {
-      const motivo = window.prompt('Qual é a pendência desta ficha?')
-      if (!motivo) return
+    function sinalizarPendencia() {
+      pendenciando.value = true
+    }
+
+    async function confirmarPendencia(motivo: string) {
+      pendenciando.value = false
       const ok = await executar(
         id => sinalizarPendenciaFicha(id, motivo),
         { tipo: 'alerta', texto: 'Ficha marcada com pendência e devolvida à fila.' }
       )
-      if (ok) ficha.status = 'COM_PENDENCIA'
+      if (ok) {
+        ficha.status = 'COM_PENDENCIA'
+        revisor.value = null
+      }
     }
 
-    async function recusar() {
-      const motivo = window.prompt('Por que esta ficha está sendo recusada? (ex.: documento ilegível ou de outro tipo)')
-      if (!motivo) return
+    function recusar() {
+      recusando.value = true
+    }
+
+    async function confirmarRecusa(escolha: { motivo: MotivoRecusa; observacao: string | null }) {
+      recusando.value = false
       const ok = await executar(
-        id => recusarFicha(id, motivo),
-        { tipo: 'alerta', texto: 'Ficha recusada. Ela não entra no prontuário.' }
+        id => recusarFicha(id, escolha.motivo, escolha.observacao),
+        { tipo: 'alerta', texto: 'Ficha recusada. Ela saiu da fila e não entra no prontuário.' }
       )
-      if (ok) ficha.status = 'RECUSADA'
+      if (ok) {
+        ficha.status = 'RECUSADA'
+        revisor.value = null
+      }
     }
 
     return {
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
-      fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao,
+      fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao, estaAutenticado,
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
-      adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar,
+      adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar, recusando, confirmarRecusa,
+      pendenciando, confirmarPendencia, semelhantes, pacienteEscolhido, falta, formatarData,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
@@ -675,7 +771,8 @@ export default defineComponent({
       opcoesPositivoNegativo: ['Positivo', 'Negativo'].map(v => ({ valor: v, rotulo: v })),
       opcoesSexo: OPCOES_SEXO,
       gruposRh: Object.values(ROTULO_ABO_RH) as string[],
-      hemocomponentes
+      hemocomponentes,
+      rotulosCoincide: { nome: 'nome', dataNascimento: 'data de nascimento', nomeMae: 'nome da mãe' } as Record<string, string>
     }
   }
 })
@@ -883,6 +980,29 @@ export default defineComponent({
   font-size: 12px;
 }
 
+.semelhante__opcao {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  font-size: 13px;
+  color: var(--cor-texto);
+  cursor: pointer;
+}
+
+.semelhante__opcao span {
+  flex: 1;
+}
+
+.semelhante__opcao small {
+  display: block;
+  margin-top: 2px;
+}
+
 .subtitulo {
   margin: 8px 0 0;
   font-size: 13px;
@@ -996,6 +1116,7 @@ export default defineComponent({
 .acoes {
   position: sticky;
   bottom: 12px;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1007,6 +1128,11 @@ export default defineComponent({
   display: flex;
   gap: 12px;
   color: var(--cor-primaria);
+}
+
+.acoes__aviso {
+  color: var(--cor-alerta);
+  font-weight: 600;
 }
 
 .acoes__texto strong {
