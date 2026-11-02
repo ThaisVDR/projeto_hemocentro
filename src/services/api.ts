@@ -139,8 +139,22 @@ export function urlArquivoDocumento(documentoId: number): string {
   return `${API_URL}/documentos/${documentoId}/arquivo`
 }
 
-export function aprovarFicha(id: string, dados: unknown): Promise<void> {
-  return enviarJson(`/fichas/${encodeURIComponent(id)}/aprovar`, 'POST', dados)
+export interface AprovacaoApi {
+  status: StatusFicha
+  gravacao: {
+    pacienteId: string
+    pacienteCriado: boolean
+    transfusoesCriadas: number
+    pesquisasCriadas: number
+    kitsCriados: number
+  }
+  avisos: string[]
+}
+
+// Sem pacienteId, o backend cria um paciente novo; com ele, liga a ficha a esse paciente.
+export function aprovarFicha(id: string, pacienteId: string | null = null): Promise<AprovacaoApi> {
+  const corpo = pacienteId ? { pacienteId } : {}
+  return enviarJson<AprovacaoApi>(`/fichas/${encodeURIComponent(id)}/aprovar`, 'POST', corpo)
 }
 
 export function sinalizarPendenciaFicha(id: string, motivo: string): Promise<void> {

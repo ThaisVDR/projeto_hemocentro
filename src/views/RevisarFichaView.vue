@@ -350,7 +350,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
 } from 'lucide-vue-next'
@@ -362,7 +362,7 @@ import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/Docume
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
 import {
   alteracoesDaIdentificacao, alteracoesDaImunohematologia, alteracoesDasTransfusoes,
-  fichaDaExtracao, fichaParaEnvio, indicePesquisaPrincipal
+  fichaDaExtracao, indicePesquisaPrincipal
 } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
@@ -371,7 +371,7 @@ import {
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
-  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao
+  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao, AlteracaoApi
 } from '@/services/api'
 import { estaAutenticado, tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
@@ -404,6 +404,7 @@ export default defineComponent({
   },
   setup() {
     const rota = useRoute()
+    const roteador = useRouter()
     const ficha = reactive(criarFichaVazia())
     const ih = computed(() => ficha.imunohematologia)
     const pagina = ref(1)
@@ -625,20 +626,52 @@ export default defineComponent({
     }
 
     async function aprovar() {
-      const ok = await executar(
-        id => aprovarFicha(id, fichaParaEnvio(ficha)),
-        { tipo: 'sucesso', texto: 'Ficha aprovada e gravada no prontuário do paciente.' }
-      )
-      if (ok) ficha.status = 'VALIDADA'
+      if (!fichaId.value) return
+      salvando.value = true
+      try {
+        // O backend aprova o que está gravado nele: primeiro salva as correções pendentes.
+        const alteracoes = alteracoesPendentes()
+        if (alteracoes.length > 0) {
+          await salvarAlteracoes(fichaId.value, alteracoes)
+          marcarComoSalvo(alteracoes)
+        }
+
+        const resultado = await aprovarFicha(fichaId.value)
+        ficha.status = 'VALIDADA'
+        revisor.value = null
+
+        const g = resultado.gravacao
+        const paciente = g.pacienteCriado ? 'Paciente novo cadastrado' : 'Ficha ligada ao paciente já cadastrado'
+        avisar('sucesso', `Ficha aprovada. ${paciente}; ${g.transfusoesCriadas} transfusão(ões) e ` +
+          `${g.pesquisasCriadas} pesquisa(s) gravadas no prontuário.`)
+        resultado.avisos.forEach(aviso => avisar('alerta', aviso))
+
+        roteador.push({ name: 'prontuarios', params: { pacienteId: g.pacienteId } })
+      } catch (e) {
+        avisar('erro', (e as Error).message)
+      } finally {
+        salvando.value = false
+      }
     }
 
-    async function salvarRascunho() {
-      if (!original.value) return
-      const alteracoes = [
+    // O que mudou desde a última vez que a ficha foi gravada no backend.
+    function alteracoesPendentes(): AlteracaoApi[] {
+      if (!original.value) return []
+      return [
         ...alteracoesDaIdentificacao(original.value, ficha),
         ...alteracoesDasTransfusoes(original.value.transfusoes, ficha.transfusoes),
         ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value)
       ]
+    }
+
+    // Depois de gravar: a "foto do antes" passa a ser a ficha como está agora.
+    function marcarComoSalvo(alteracoes: AlteracaoApi[]) {
+      original.value = JSON.parse(JSON.stringify(ficha))
+      if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
+    }
+
+    async function salvarRascunho() {
+      const alteracoes = alteracoesPendentes()
       if (alteracoes.length === 0) {
         avisar('info', 'Nada foi alterado desde o último salvamento.')
         return
@@ -647,10 +680,7 @@ export default defineComponent({
         id => salvarAlteracoes(id, alteracoes),
         { tipo: 'sucesso', texto: `${alteracoes.length} campo(s) salvo(s). A ficha continua com você.` }
       )
-      if (ok) {
-        original.value = JSON.parse(JSON.stringify(ficha))
-        if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
-      }
+      if (ok) marcarComoSalvo(alteracoes)
     }
 
     function sinalizarPendencia() {
