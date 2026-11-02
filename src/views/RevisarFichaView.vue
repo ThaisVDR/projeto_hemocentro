@@ -93,16 +93,32 @@
             <CampoRevisao :campo="ficha.identificacao.diagnostico" v-bind="eventos(ficha.identificacao.diagnostico)" />
           </div>
 
-          <div v-if="ficha.cadastroSemelhante" class="semelhante">
+          <div v-if="semelhantes.length" class="semelhante">
             <Users :size="18" />
             <div>
-              <strong>1 cadastro semelhante • {{ ficha.cadastroSemelhante.prontuario }}</strong>
-              <small>{{ ficha.cadastroSemelhante.motivo }}</small>
+              <strong>Possível paciente já cadastrado</strong>
+              <small>Confira com o original. Se for a mesma pessoa, a ficha entra no prontuário dela.</small>
+
+              <label v-for="paciente in semelhantes" :key="paciente.id" class="semelhante__opcao">
+                <input v-model="pacienteEscolhido" type="radio" name="paciente" :value="paciente.id"
+                  :disabled="!revisaoEhMinha" />
+                <span>
+                  <b>{{ paciente.nome }}</b> • nasc. {{ formatarData(paciente.dataNascimento) || '—' }}
+                  • mãe: {{ paciente.nomeMae || '—' }} • prontuário {{ paciente.prontuario ?? '—' }}
+                  • {{ paciente.fichasValidadas }} ficha(s)
+                  <small>Coincide: {{paciente.coincide.map(c => rotulosCoincide[c]).join(', ')}}</small>
+                </span>
+                <router-link :to="{ name: 'prontuarios', params: { pacienteId: paciente.id } }" target="_blank">
+                  Ver prontuário
+                </router-link>
+              </label>
+
+              <label class="semelhante__opcao">
+                <input v-model="pacienteEscolhido" type="radio" name="paciente" :value="null"
+                  :disabled="!revisaoEhMinha" />
+                <span><b>É outra pessoa</b>: cadastrar um paciente novo</span>
+              </label>
             </div>
-            <router-link class="botao"
-              :to="{ name: 'prontuarios', params: { pacienteId: ficha.cadastroSemelhante.prontuario } }">
-              Comparar
-            </router-link>
           </div>
         </SecaoRevisao>
 
@@ -321,6 +337,9 @@
           <small v-else-if="!revisaoEhMinha && !finalizada" class="acoes__aviso">
             Inicie ou assuma a revisão (no topo da página) para salvar, recusar ou aprovar.
           </small>
+          <small v-else-if="falta" class="acoes__aviso">
+            Indique se a ficha é de um paciente já cadastrado (na Identificação) antes de aprovar.
+          </small>
           <small v-else-if="conferencia.podeAprovar">
             {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de
             aprovar.
@@ -338,7 +357,7 @@
         <button type="button" class="botao" :disabled="salvando || !revisaoEhMinha" @click="salvarRascunho">Salvar
           rascunho</button>
         <button type="button" class="botao botao--primario"
-          :disabled="!conferencia.podeAprovar || salvando || !revisaoEhMinha" @click="aprovar">
+          :disabled="!conferencia.podeAprovar || salvando || !revisaoEhMinha || falta" @click="aprovar">
           <Check :size="14" /> Aprovar e salvar
         </button>
       </div>
@@ -371,11 +390,13 @@ import {
   desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
 } from '@/domain/revisao'
 import {
-  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao, iniciarRevisao, AlteracaoApi
+  aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao,
+  iniciarRevisao, AlteracaoApi, buscarSemelhantes, PacienteSemelhanteApi
 } from '@/services/api'
 import { estaAutenticado, tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
-import { avisar } from '@/composables/useAvisos'
+import { formatarData } from '@/utils/formatacao'
+import { avisar, fecharErros } from '@/composables/useAvisos'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
@@ -418,6 +439,10 @@ export default defineComponent({
     const indicePesquisa = ref<number | null>(null)
     const recusando = ref(false)
     const pendenciando = ref(false)
+    const semelhantes = ref<PacienteSemelhanteApi[]>([])
+    // undefined = ainda não escolheu; null = é outra pessoa (paciente novo); texto = id do paciente existente.
+    const pacienteEscolhido = ref<string | null | undefined>(undefined)
+    const falta = computed(() => semelhantes.value.length > 0 && pacienteEscolhido.value === undefined)
     const revisaoEhMinha = computed(() =>
       ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
     )
@@ -476,6 +501,7 @@ export default defineComponent({
         revisor.value = null
         original.value = null
         indicePesquisa.value = null
+        semelhantes.value = []
         trocarArquivo(null)
         return
       }
@@ -486,6 +512,7 @@ export default defineComponent({
         original.value = fichaDaExtracao(detalhe)
         indicePesquisa.value = indicePesquisaPrincipal(detalhe)
         revisor.value = detalhe.revisor
+        carregarSemelhantes()
         const nomeArquivo = detalhe.documento.nomeOriginal
         trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
         if (detalhe.erroLeitura) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erroLeitura}` }
@@ -636,12 +663,13 @@ export default defineComponent({
           marcarComoSalvo(alteracoes)
         }
 
-        const resultado = await aprovarFicha(fichaId.value)
+        const resultado = await aprovarFicha(fichaId.value, pacienteEscolhido.value ?? null)
         ficha.status = 'VALIDADA'
         revisor.value = null
 
         const g = resultado.gravacao
         const paciente = g.pacienteCriado ? 'Paciente novo cadastrado' : 'Ficha ligada ao paciente já cadastrado'
+        fecharErros()
         avisar('sucesso', `Ficha aprovada. ${paciente}; ${g.transfusoesCriadas} transfusão(ões) e ` +
           `${g.pesquisasCriadas} pesquisa(s) gravadas no prontuário.`)
         resultado.avisos.forEach(aviso => avisar('alerta', aviso))
@@ -668,6 +696,17 @@ export default defineComponent({
     function marcarComoSalvo(alteracoes: AlteracaoApi[]) {
       original.value = JSON.parse(JSON.stringify(ficha))
       if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
+      carregarSemelhantes()
+    }
+
+    async function carregarSemelhantes() {
+      if (!fichaId.value) return
+      try {
+        semelhantes.value = await buscarSemelhantes(fichaId.value)
+      } catch {
+        semelhantes.value = []
+      }
+      pacienteEscolhido.value = undefined
     }
 
     async function salvarRascunho() {
@@ -721,7 +760,7 @@ export default defineComponent({
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar, recusando, confirmarRecusa,
-      pendenciando, confirmarPendencia,
+      pendenciando, confirmarPendencia, semelhantes, pacienteEscolhido, falta, formatarData,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
@@ -732,7 +771,8 @@ export default defineComponent({
       opcoesPositivoNegativo: ['Positivo', 'Negativo'].map(v => ({ valor: v, rotulo: v })),
       opcoesSexo: OPCOES_SEXO,
       gruposRh: Object.values(ROTULO_ABO_RH) as string[],
-      hemocomponentes
+      hemocomponentes,
+      rotulosCoincide: { nome: 'nome', dataNascimento: 'data de nascimento', nomeMae: 'nome da mãe' } as Record<string, string>
     }
   }
 })
@@ -938,6 +978,29 @@ export default defineComponent({
 
 .semelhante small {
   font-size: 12px;
+}
+
+.semelhante__opcao {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  font-size: 13px;
+  color: var(--cor-texto);
+  cursor: pointer;
+}
+
+.semelhante__opcao span {
+  flex: 1;
+}
+
+.semelhante__opcao small {
+  display: block;
+  margin-top: 2px;
 }
 
 .subtitulo {

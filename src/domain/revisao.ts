@@ -131,8 +131,6 @@ export const DOCUMENTOS_DA_FICHA = [
 
 export interface FichaEmRevisao {
   status: StatusFicha
- // Preenchido pelo backend quando houver busca por cadastro com nome, DN e nome da mãe.
-  cadastroSemelhante: { prontuario: string; motivo: string } | null
   identificacao: IdentificacaoRevisao
   transfusoes: TransfusaoRevisao[]
   transfusoesConferencia: Conferencia
@@ -200,7 +198,6 @@ function pesquisaBioRadVazia(documento: string, pagina: number, celulas: string[
 export function criarFichaVazia(): FichaEmRevisao {
   return {
     status: 'EM_REVISAO',
-    cadastroSemelhante: null,
     identificacao: {
       nome: campoVazio('Nome do receptor', 1),
       prontuario: campoVazio('Prontuário', 1),
@@ -334,3 +331,4 @@ export const MOTIVOS_RECUSA: { valor: MotivoRecusa; rotulo: string }[] = [
   { valor: 'ILEGIVEL', rotulo: 'Ilegível' },
   { valor: 'OUTRO_DOCUMENTO', rotulo: 'Não é uma ficha (outro documento)' }
 ]
+

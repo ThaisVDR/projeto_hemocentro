@@ -18,6 +18,10 @@ export function fecharAviso(id: number): void {
   avisos.value = avisos.value.filter(aviso => aviso.id !== id)
 }
 
+export function fecharErros(): void {
+  avisos.value = avisos.value.filter(aviso => aviso.tipo !== 'erro')
+}
+
 export function avisar(tipo: TipoAviso, texto: string): void {
   const id = ++proximoId
   avisos.value.push({ id, tipo, texto })

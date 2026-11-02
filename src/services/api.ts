@@ -113,6 +113,20 @@ export function buscarFicha(id: string): Promise<FichaDetalheApi> {
   return requisitar<FichaDetalheApi>(`/fichas/${encodeURIComponent(id)}`)
 }
 
+export interface PacienteSemelhanteApi {
+  id: string
+  nome: string
+  dataNascimento: string | null
+  nomeMae: string | null
+  prontuario: number | null
+  fichasValidadas: number
+  coincide: string[]
+}
+
+export function buscarSemelhantes(id: string): Promise<PacienteSemelhanteApi[]> {
+  return requisitar<PacienteSemelhanteApi[]>(`/fichas/${encodeURIComponent(id)}/semelhantes`)
+}
+
 export interface RevisaoApi {
   status: StatusFicha
   revisor: { id: number; nome: string }
