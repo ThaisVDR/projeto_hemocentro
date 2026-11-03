@@ -359,6 +359,25 @@ export function buscarPacientes(filtros: FiltrosPaciente): Promise<ListaPaginada
   return requisitar<ListaPaginadaApi<PacienteResumoApi>>(`/pacientes?${parametros.toString()}`)
 }
 
+
+//   GET /pacientes/:id/historico → fichas validadas e documentos de origem
+export interface HistoricoItemApi {
+  ficha: { id: number; codigo: string }
+  dataAtendimento: string | null
+  documento: {
+    id: number
+    nomeOriginal: string
+    totalPaginas: number | null
+    loteCodigo: string
+    url: string
+  }
+  validacao: { validadoPor: string | null; validadoEm: string | null }
+}
+
+export function buscarHistorico(id: string): Promise<HistoricoItemApi[]> {
+  return requisitar<HistoricoItemApi[]>(`/pacientes/${encodeURIComponent(id)}/historico`)
+}
+
 // Formato que as telas do Prontuário usam (os componentes não mudam).
 export interface AnticorpoPacienteApi {
   data: string | null
