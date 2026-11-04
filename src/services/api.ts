@@ -3,7 +3,6 @@ import { tokenAtual } from '@/services/sessao'
 import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
 import { TipoEventoApi } from '@/domain/auditoria'
 
-
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
 
 const esperar = (ms = 600) => new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -389,10 +388,6 @@ export interface HistoricoItemApi {
   validacao: { validadoPor: string | null; validadoEm: string | null }
 }
 
-export function buscarHistorico(id: string): Promise<HistoricoItemApi[]> {
-  return requisitar<HistoricoItemApi[]>(`/pacientes/${encodeURIComponent(id)}/historico`)
-}
-
 // Formato que as telas do Prontuário usam (os componentes não mudam).
 export interface AnticorpoPacienteApi {
   data: string | null
@@ -419,30 +414,125 @@ export interface PacienteDetalheApi {
   ultimaValidacao: { em: string; por: string } | null
 }
 
-// Parte da resposta de GET /pacientes/:id/ficha-completa que o Prontuário aproveita.
-interface FichaCompletaApi {
+// Resposta de GET /pacientes/:id/ficha-completa (somente leitura, só registros validados).
+// O Prontuário aproveita uma parte (buscarPaciente); a tela Ficha completa usa tudo.
+// Datas em AAAA-MM-DD; enums chegam como no banco (O_POSITIVO, NEGATIVO...) e são traduzidos em domain/traducao.ts.
+export interface OrigemApi {
+  fichaCodigo: string | null
+  pagina: number | null
+}
+
+export interface TransfusaoApi {
+  id: number
+  dataEnvio: string
+  tipoHemocomponente: string
+  numeroDoacao: string
+  numeroServico: string | null
+  tracejador: string | null
+  grsRhd: string
+  volMl: number
+  testesPai: string
+  provaCruzada: string
+  destino: string | null
+  responsavelLiberacao: string | null
+  origem: OrigemApi
+}
+
+export interface PesquisaImunoApi {
+  id: number
+  dataPesquisa: string
+  gs: string | null
+  rh: string | null
+  dFraco: string | null
+  pai: string | null
+  tad: string | null
+  autocontrole: string | null
+  dcScreening: string | null
+  especificidade: string | null
+  interpretacao: string | null
+  observacao: string | null
+  amostra: string | null
+  metodologia: string | null
+  fenotipagem: { antigeno: string; resultado: string }[]
+  responsavel: string | null
+  origem: OrigemApi
+}
+
+export interface ResultadoCelulaApi {
+  celula: number
+  lissCoombs: string | null
+  enzima: string | null
+  frio: string | null
+}
+
+export interface KitIdApi {
+  id: number
+  tipo: 'DIACELL' | 'DIAPANEL'
+  dataPesquisa: string
+  gs: string | null
+  rh: string | null
+  tad: string | null
+  pai: string | null
+  autocontroleLissCoombs: string | null
+  autocontroleEnzima: string | null
+  autocontroleFrio: string | null
+  interpretacao: string | null
+  tecnica: string | null
+  observacao: string | null
+  resultados: ResultadoCelulaApi[]
+  origem: OrigemApi
+}
+
+export interface DocumentoValidadoApi {
+  fichaCodigo: string
+  documentoId: number
+  nomeOriginal: string
+  totalPaginas: number | null
+  validadoEm: string | null
+  url: string
+}
+
+export interface FichaCompletaApi {
   paciente: {
     id: string
     nome: string
+    nomeSocial: string | null
     sexo: string | null
     raca: string | null
     aboRh: string | null
     dataNascimento: string
+    idade: number
     prontuario: number | null
     cpf: string | null
     cartaoSus: string | null
     diagnostico: string | null
     nomeMae: string | null
+    nomePai: string | null
+    alergias: string | null
     municipio: string | null
   }
   ultimaValidacao: { fichaCodigo: string; validadoPor: string | null; validadoEm: string | null } | null
- 
-  pesquisasImunoHematologicas: {
-    dataPesquisa: string
-    dFraco: string | null
-    especificidade: string | null
-    fenotipagem: { antigeno: string; resultado: string }[]
-  }[]
+  transfusoes: TransfusaoApi[]
+  pesquisasImunoHematologicas: PesquisaImunoApi[]
+  kitsDiaCell: KitIdApi[]
+  kitsDiaPanel: KitIdApi[]
+  documentos: DocumentoValidadoApi[]
+}
+
+export function buscarFichaCompleta(id: string): Promise<FichaCompletaApi> {
+  return requisitar<FichaCompletaApi>(`/pacientes/${encodeURIComponent(id)}/ficha-completa`)
+}
+
+// Uma linha por ficha validada, da mais recente para a mais antiga (GET /pacientes/:id/historico).
+export interface HistoricoItemApi {
+  ficha: { id: number; codigo: string }
+  dataAtendimento: string | null
+  documento: { id: number; nomeOriginal: string; totalPaginas: number | null; loteCodigo: string; url: string }
+  validacao: { validadoPor: string | null; validadoEm: string | null }
+}
+
+export function buscarHistorico(id: string): Promise<HistoricoItemApi[]> {
+  return requisitar<HistoricoItemApi[]>(`/pacientes/${encodeURIComponent(id)}/historico`)
 }
 
 export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
@@ -516,8 +606,6 @@ export function listarPrioridadesRevisao(limite = 3): Promise<FilaRevisaoApi> {
   parametros.set('limite', String(limite))
   return requisitar<FilaRevisaoApi>(`/fichas?${parametros.toString()}`)
 }
-
-
 
 // Mais recentes primeiro.
 export function listarEventosRecentes(limite = 3): Promise<ListaPaginadaApi<EventoAuditoriaApi>> {
