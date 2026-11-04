@@ -203,6 +203,7 @@ export interface DocumentoLoteApi {
   fichaId: number | null
   status: StatusFicha | null
   erro?: string | null
+  falhouEm?: string | null
 }
 
 export interface LoteCriadoApi {

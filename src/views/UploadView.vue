@@ -67,10 +67,9 @@
                 :to="{ name: 'revisar', params: { fichaId: envio.documento.fichaId } }" class="link">
                 Revisar →
               </router-link>
-              <button v-else-if="envio.documento?.status === 'FALHA_LEITURA'" type="button" class="link"
-                @click="reprocessar(envio)">
-                Reprocessar
-              </button>
+              <BotaoReprocessar v-else-if="envio.documento?.status === 'FALHA_LEITURA'"
+                :documento-id="envio.documento.id" :falhou-em="envio.documento.falhouEm"
+                @reprocessado="aoReprocessar(envio)" />
               <button v-else-if="envio.estado === 'erro'" type="button" class="link"
                 @click="enviarGrupo([envio])">Tentar de
                 novo</button>
@@ -86,8 +85,9 @@
 import { defineComponent, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ListChecks, Plus, UploadCloud } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
+import BotaoReprocessar from '@/components/upload/BotaoReprocessar.vue'
 import { STATUS_FICHA } from '@/domain/revisao'
-import { buscarLote, DocumentoLoteApi, enviarLote, reprocessarDocumento } from '@/services/api'
+import { buscarLote, DocumentoLoteApi, enviarLote } from '@/services/api'
 
 interface Envio {
   chave: number
@@ -106,7 +106,7 @@ const TIPOS = ['application/pdf', 'image/jpeg', 'image/png']
 
 export default defineComponent({
   name: 'UploadView',
-  components: { ListChecks, Plus, UploadCloud, PageHeader },
+  components: { ListChecks, Plus, UploadCloud, PageHeader, BotaoReprocessar },
   setup() {
     const envios = reactive<Envio[]>([])
     const arrastando = ref(false)
@@ -147,7 +147,12 @@ export default defineComponent({
           const lote = await buscarLote(loteId)
           lote.documentos.forEach(documento => {
             const envio = envios.find(e => e.documento?.id === documento.id)
-            if (envio) envio.documento = documento
+            if (!envio) return
+            // Enquanto o backend não manda a hora da falha, usamos a hora em que a tela viu a falha.
+            const falhouEm = documento.status === 'FALHA_LEITURA'
+              ? documento.falhouEm ?? new Date().toISOString()
+              : null
+            envio.documento = { ...documento, falhouEm }
           })
         } catch {
           // Sem conexão agora: tenta de novo na próxima rodada.
@@ -159,16 +164,11 @@ export default defineComponent({
     onMounted(() => { relogio = window.setInterval(atualizarSituacao, 4000) })
     onUnmounted(() => window.clearInterval(relogio))
 
-    async function reprocessar(envio: Envio) {
+    function aoReprocessar(envio: Envio) {
       if (!envio.documento) return
-      envio.erro = null
-      try {
-        await reprocessarDocumento(envio.documento.id)
-        envio.documento.status = 'ENVIADA'
-        envio.documento.erro = null
-      } catch (e) {
-        envio.erro = (e as Error).message
-      }
+      envio.documento.status = 'ENVIADA'
+      envio.documento.erro = null
+      envio.documento.falhouEm = null
     }
 
     async function adicionar(arquivos: FileList | null | undefined) {
@@ -199,8 +199,6 @@ export default defineComponent({
       entrada.value = ''
     }
 
-    // O backend devolve o erro técnico da IA; aqui viramos uma frase que a pessoa entende.
-    // O texto completo continua no title (passar o mouse em cima mostra).
     function erroDeLeitura(erro: string): string {
       if (erro.includes('429') || /quota/i.test(erro)) {
         return 'A cota diária da IA acabou. Tente reprocessar amanhã.'
@@ -223,7 +221,7 @@ export default defineComponent({
     }
 
     return {
-      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, reprocessar, erroDeLeitura,
+      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, aoReprocessar, erroDeLeitura,
       status: STATUS_FICHA, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
     }
   }
