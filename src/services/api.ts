@@ -82,7 +82,20 @@ export interface FichaExtraidaApi {
     amostra: string | null
     metodologia: string | null
     responsavel: string | null
+     fenotipagem: { antigeno: string; resultado: string }[]
   }[]
+  kits: KitExtraidoApi[]
+}
+
+// Folha Bio-Rad lida pela IA (páginas 2 e 3). "celula" é o número da hemácia (DiaCell: 1 e 2; DiaPanel: 1 a 11).
+export interface KitExtraidoApi {
+  tipo: 'DIACELL' | 'DIAPANEL' | null
+  dataPesquisa: string | null
+  interpretacao: string | null
+  autocontroleLissCoombs: string | null
+  autocontroleEnzima: string | null
+  autocontroleFrio: string | null
+  resultados: { celula: number; lissCoombs: string | null; enzima: string | null; frio: string | null }[]
 }
 
 export interface FichaDetalheApi {
