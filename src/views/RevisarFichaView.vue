@@ -385,7 +385,7 @@ import DocumentoOriginal, { ArquivoDocumento } from '@/components/revisao/Docume
 import SecaoRevisao from '@/components/revisao/SecaoRevisao.vue'
 import {
   alteracoesDaIdentificacao, alteracoesDaImunohematologia, alteracoesDasTransfusoes,
-  fichaDaExtracao, indicePesquisaPrincipal
+  alteracoesDosKits, fichaDaExtracao, indicePesquisaPrincipal, tiposDosKits
 } from '@/domain/conversaoApi'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from '@/domain/fenotipo'
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
@@ -442,6 +442,7 @@ export default defineComponent({
     const revisor = ref<{ id: number; nome: string } | null>(null)
     const original = ref<FichaEmRevisao | null>(null)
     const indicePesquisa = ref<number | null>(null)
+    const tiposNoBackend = ref<(string | null)[]>([])
     const recusando = ref(false)
     const pendenciando = ref(false)
     const assumindo = ref(false)
@@ -507,6 +508,7 @@ export default defineComponent({
         revisor.value = null
         original.value = null
         indicePesquisa.value = null
+        tiposNoBackend.value = []
         semelhantes.value = []
         trocarArquivo(null)
         return
@@ -517,6 +519,7 @@ export default defineComponent({
         Object.assign(ficha, fichaDaExtracao(detalhe))
         original.value = fichaDaExtracao(detalhe)
         indicePesquisa.value = indicePesquisaPrincipal(detalhe)
+        tiposNoBackend.value = tiposDosKits(detalhe)
         revisor.value = detalhe.revisor
         carregarSemelhantes()
         const nomeArquivo = detalhe.documento.nomeOriginal
@@ -695,7 +698,8 @@ export default defineComponent({
       return [
         ...alteracoesDaIdentificacao(original.value, ficha),
         ...alteracoesDasTransfusoes(original.value.transfusoes, ficha.transfusoes),
-        ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value)
+        ...alteracoesDaImunohematologia(original.value, ficha, indicePesquisa.value),
+        ...alteracoesDosKits(original.value, ficha, tiposNoBackend.value)
       ]
     }
 
@@ -703,6 +707,11 @@ export default defineComponent({
     function marcarComoSalvo(alteracoes: AlteracaoApi[]) {
       original.value = JSON.parse(JSON.stringify(ficha))
       if (alteracoes.some(a => a.campo === 'pesquisas[0]')) indicePesquisa.value = 0
+      // Kit criado agora: guarda o tipo na posição dele, para o próximo salvamento alterar em vez de criar outro.
+      for (const alteracao of alteracoes) {
+        const posicao = alteracao.campo.match(/^kits\[(\d+)\]$/)
+        if (posicao) tiposNoBackend.value[Number(posicao[1])] = (alteracao.valor as { tipo: string }).tipo
+      }
       carregarSemelhantes()
     }
 

@@ -1,8 +1,11 @@
-import { AlteracaoApi, FichaDetalheApi } from '@/services/api'
+import { AlteracaoApi, FichaDetalheApi, KitExtraidoApi } from '@/services/api'
 import { normalizarAboRh, normalizarRaca, traduzirAboRh } from './traducao'
 import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Fenotipo, Reacao, REACOES } from './fenotipo'
 import { lerCodigoRacaCor } from './resumoImunohematologico'
-import { CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, ImunohematologiaRevisao, lerResultadoTeste, TransfusaoRevisao } from './revisao'
+import {
+  CampoRevisavel, criarFichaVazia, FichaEmRevisao, IdentificacaoRevisao, ImunohematologiaRevisao, lerResultadoTeste,
+  PesquisaBioRadRevisao, TransfusaoRevisao
+} from './revisao'
 
 function sugerir(campo: CampoRevisavel, valor: string | number | null | undefined): void {
   if (valor === null || valor === undefined || String(valor).trim() === '') return
@@ -33,6 +36,39 @@ const ANTIGENO_NO_BACKEND: Record<string, string> = { K: 'Kell' }
 
 function antigenoNaTela(nomeNoBackend: string): string {
   return Object.keys(ANTIGENO_NO_BACKEND).find(nome => ANTIGENO_NO_BACKEND[nome] === nomeNoBackend) ?? nomeNoBackend
+}
+
+// Páginas 2 e 3 da tela ↔ folhas Bio-Rad do backend (kits).
+type TipoKit = 'DIACELL' | 'DIAPANEL'
+const TIPO_DO_KIT: Record<string, TipoKit> = { 'ID-DiaCell I, II': 'DIACELL', 'ID-DiaPanel': 'DIAPANEL' }
+
+// Célula da tela → número no backend: o DiaCell usa algarismos romanos (I e II).
+function numeroDaCelula(celula: string): number {
+  if (celula === 'I') return 1
+  if (celula === 'II') return 2
+  return Number(celula)
+}
+
+function reacaoValida(valor: string | null): Reacao | null {
+  return valor && (REACOES as string[]).includes(valor) ? valor as Reacao : null
+}
+
+function preencherKit(pesquisa: PesquisaBioRadRevisao, kit: KitExtraidoApi): void {
+  sugerir(pesquisa.data, kit.dataPesquisa)
+  sugerir(pesquisa.interpretacao, kit.interpretacao)
+  for (const reacao of pesquisa.reacoes) {
+    if (reacao.celula === 'Autocontrole') {
+      reacao.coombs = reacaoValida(kit.autocontroleLissCoombs)
+      reacao.enzima = reacaoValida(kit.autocontroleEnzima)
+      reacao.frio = reacaoValida(kit.autocontroleFrio)
+      continue
+    }
+    const lida = kit.resultados.find(r => r.celula === numeroDaCelula(reacao.celula))
+    reacao.coombs = reacaoValida(lida?.lissCoombs ?? null)
+    reacao.enzima = reacaoValida(lida?.enzima ?? null)
+    reacao.frio = reacaoValida(lida?.frio ?? null)
+  }
+  if (pesquisa.reacoes.some(r => r.coombs || r.enzima || r.frio)) pesquisa.reacoesConferencia.estado = 'sugerido'
 }
 
 // Qual pesquisa do backend aparece na página 4 da revisão: a primeira com grupo ou Rh.
@@ -77,8 +113,6 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
     ficha.transfusoesConferencia.estado = 'sugerido'
   }
 
-  // O backend ainda não separa DiaCell, DiaPanel e Pesquisa Imuno Hematológica:
-  // os resultados vão para a página 4 e as páginas Bio-Rad ficam para preenchimento.
   const ih = ficha.imunohematologia
   const indice = indicePesquisaPrincipal(detalhe)
   const principal = indice === null ? undefined : extracao.pesquisas[indice]
@@ -101,6 +135,13 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
     if ((REACOES as string[]).includes(resultado)) ih.fenotipo[antigenoNaTela(antigeno)] = resultado as Reacao
   }
   if (Object.keys(ih.fenotipo).length > 0) ih.fenotipoConferencia.estado = 'sugerido'
+
+  // Páginas 2 e 3: cada folha Bio-Rad lida pela IA preenche a seção do mesmo tipo.
+  for (const pesquisa of ficha.pesquisas) {
+    const kit = (extracao.kits ?? []).find(k => k.tipo === TIPO_DO_KIT[pesquisa.documento])
+    if (kit) preencherKit(pesquisa, kit)
+  }
+
 
   // Anticorpos: o backend guarda num texto só ("Anti-E, Anti-c"), na mesma pesquisa da página 4.
   ih.anticorpos = principal
@@ -261,6 +302,57 @@ export function alteracoesDaImunohematologia(
   }))
   if (mudouFenotipagem) alteracoes.push({ campo: `pesquisas[${indice}].fenotipagem`, valor: fenotipagem })
   if (mudouEspecificidade) alteracoes.push({ campo: `pesquisas[${indice}].especificidade`, valor: especificidade })
+  return alteracoes
+}
+
+// Seção Bio-Rad da tela → campos do kit no backend (só os que a tela edita).
+function kitParaApi(pesquisa: PesquisaBioRadRevisao) {
+  const autocontrole = pesquisa.reacoes.find(r => r.celula === 'Autocontrole')
+  return {
+    dataPesquisa: pesquisa.data.valor || null,
+    interpretacao: pesquisa.interpretacao.valor?.trim() || null,
+    autocontroleLissCoombs: autocontrole?.coombs ?? null,
+    autocontroleEnzima: autocontrole?.enzima ?? null,
+    autocontroleFrio: autocontrole?.frio ?? null,
+    resultados: pesquisa.reacoes
+      .filter(r => r.celula !== 'Autocontrole' && (r.coombs || r.enzima || r.frio))
+      .map(r => ({ celula: numeroDaCelula(r.celula), lissCoombs: r.coombs, enzima: r.enzima, frio: r.frio }))
+  }
+}
+
+// Tipo de cada kit no backend, na ordem da lista (para saber a posição de cada um).
+export function tiposDosKits(detalhe: FichaDetalheApi): (string | null)[] {
+  return (detalhe.dados?.kits ?? []).map(kit => kit.tipo)
+}
+
+// Páginas 2 e 3 que mudaram. Kit que já existe: só os campos alterados; kit novo: a folha inteira no fim da lista.
+export function alteracoesDosKits(
+  antes: FichaEmRevisao, agora: FichaEmRevisao, tiposNoBackend: (string | null)[]
+): AlteracaoApi[] {
+  const alteracoes: AlteracaoApi[] = []
+  let proximaPosicao = tiposNoBackend.length
+
+  agora.pesquisas.forEach((pesquisa, i) => {
+    const tipo = TIPO_DO_KIT[pesquisa.documento]
+    const novo = kitParaApi(pesquisa)
+    const velho = kitParaApi(antes.pesquisas[i])
+    if (!tipo || JSON.stringify(novo) === JSON.stringify(velho)) return
+
+    const posicao = tiposNoBackend.indexOf(tipo)
+    if (posicao < 0) {
+      alteracoes.push({
+        campo: `kits[${proximaPosicao}]`,
+        valor: { tipo, gs: null, rh: null, tad: null, pai: null, tecnica: null, observacao: null, ...novo, pagina: pesquisa.pagina }
+      })
+      proximaPosicao++
+      return
+    }
+    for (const chave of Object.keys(novo) as (keyof typeof novo)[]) {
+      if (JSON.stringify(novo[chave]) !== JSON.stringify(velho[chave])) {
+        alteracoes.push({ campo: `kits[${posicao}].${chave}`, valor: novo[chave] })
+      }
+    }
+  })
   return alteracoes
 }
 
