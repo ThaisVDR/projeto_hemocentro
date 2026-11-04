@@ -112,8 +112,115 @@ h3 {
   background: currentColor;
 }
 
-.selo--sucesso { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
-.selo--alerta { background: var(--cor-alerta-suave); color: var(--cor-alerta); }
-.selo--info { background: var(--cor-info-suave); color: var(--cor-info); }
-.selo--neutro { background: var(--cor-neutro-suave); color: var(--cor-texto-suave); }
-.selo--perigo { background: var(--cor-primaria-suave); color: var(--cor-primaria); }
+.selo--sucesso {
+  background: var(--cor-sucesso-suave);
+  color: var(--cor-sucesso);
+}
+
+.selo--alerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.selo--info {
+  background: var(--cor-info-suave);
+  color: var(--cor-info);
+}
+
+.selo--neutro {
+  background: var(--cor-neutro-suave);
+  color: var(--cor-texto-suave);
+}
+
+.selo--perigo {
+  background: var(--cor-primaria-suave);
+  color: var(--cor-primaria);
+}
+
+
+/* ---------- Tela Ficha completa (classes ficha-*) ---------- */
+.ficha-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.ficha-registro {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+}
+
+.ficha-registro__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ficha-origem {
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+}
+
+.ficha-vazio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cor-texto-fraco);
+}
+
+.ficha-aviso {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--cor-alerta);
+  border-radius: var(--raio);
+  background: var(--cor-alerta-suave);
+  font-size: 13px;
+  color: var(--cor-alerta);
+}
+
+.ficha-aviso--info {
+  border-left-color: var(--cor-info);
+  background: var(--cor-info-suave);
+  color: var(--cor-info);
+}
+
+.ficha-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ficha-chips .selo::before {
+  display: none;
+}
+
+.ficha-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ficha-tabela th {
+  padding: 8px 10px;
+  background: var(--cor-fundo);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--cor-texto-suave);
+}
+
+.ficha-tabela td {
+  padding: 10px;
+  border-bottom: 1px solid var(--cor-borda);
+  vertical-align: top;
+}
+
+.ficha-tabela small {
+  display: block;
+  color: var(--cor-texto-suave);
+}
