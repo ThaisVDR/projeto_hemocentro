@@ -80,6 +80,7 @@ export interface FichaExtraidaApi {
     amostra: string | null
     metodologia: string | null
     responsavel: string | null
+    fenotipagem: { antigeno: string; resultado: string }[]
   }[]
 }
 
