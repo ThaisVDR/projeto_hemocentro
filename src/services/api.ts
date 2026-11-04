@@ -1,6 +1,8 @@
 import { Reacao, extrairAnticorpos, interpretarReacao } from '@/domain/fenotipo'
 import { tokenAtual } from '@/services/sessao'
 import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
+import { TipoEventoApi } from '@/domain/auditoria'
+
 
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
 
@@ -473,4 +475,136 @@ export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
       ? { em: ultimaValidacao.validadoEm ?? '', por: ultimaValidacao.validadoPor ?? 'revisor não identificado' }
       : null
   }
+}
+
+export interface DashboardApi {
+  periodo: { de: string; ate: string }
+  // digitalizadas e validadas contam o período; emRevisao e lendo são a situação de agora.
+  fichas: { digitalizadas: number; validadas: number; emRevisao: number; lendo: number }
+  evolucaoSemanal: { semana: string; fichas: number }[]
+  qualidadeCadastro: { validadas: number; completas: number; percentual: number }
+}
+
+// de/ate em AAAA-MM-DD; sem eles o backend usa as últimas 6 semanas.
+export function buscarDashboard(periodo: { de?: string; ate?: string } = {}): Promise<DashboardApi> {
+  const parametros = new URLSearchParams()
+  if (periodo.de) parametros.set('de', periodo.de)
+  if (periodo.ate) parametros.set('ate', periodo.ate)
+  const consulta = parametros.toString()
+  return requisitar<DashboardApi>(`/dashboard${consulta ? `?${consulta}` : ''}`)
+}
+
+// As fichas que mais pedem atenção primeiro (com alerta e, entre elas, as que esperam há mais tempo).
+// `contadores` vem de todas as fichas, não só das 3 listadas: serve para detalhar os cartões.
+export function listarPrioridadesRevisao(limite = 3): Promise<FilaRevisaoApi> {
+  const parametros = new URLSearchParams()
+  parametros.set('status', 'AGUARDANDO_REVISAO,EM_REVISAO,COM_PENDENCIA')
+  parametros.set('ordenar', 'atencao')
+  parametros.set('limite', String(limite))
+  return requisitar<FilaRevisaoApi>(`/fichas?${parametros.toString()}`)
+}
+
+
+
+// Mais recentes primeiro.
+export function listarEventosRecentes(limite = 3): Promise<ListaPaginadaApi<EventoAuditoriaApi>> {
+  return requisitar<ListaPaginadaApi<EventoAuditoriaApi>>(`/auditoria/eventos?limite=${limite}`)
+}
+
+// ---------- Auditoria ----------
+// Rotas do backend (somente leitura):
+//   GET /auditoria/eventos?busca=&de=&ate=&tipo=&usuarioId=&pagina=&limite=  → lista + contadores
+//   GET /auditoria/eventos/:id                                                → detalhe do evento
+//   GET /auditoria/eventos/exportar?(mesmos filtros)                          → trilha-auditoria.xlsx
+
+export interface ListaEventosAuditoriaApi extends ListaPaginadaApi<EventoAuditoriaApi> {
+  contadores: { eventos: number; edicoes: number; validacoes: number }
+}
+export interface EventoAuditoriaApi {
+  id: number
+  codigo: string
+  tipo: string
+  ocorridoEm: string
+  usuario: { id: number; nome: string } | null // null = o próprio sistema (fila da IA)
+  ficha: { id: number; codigo: string } | null
+  lote: { id: number; codigo: string } | null
+  paciente: { id: string; nome: string } | null
+  campo: string | null
+  pagina: number | null
+}
+export interface EventoAuditoriaDetalheApi {
+  id: number
+  codigo: string
+  tipo: TipoEventoApi
+  ocorridoEm: string
+  usuario: { id: number; nome: string } | null
+  paciente: { id: string; nome: string } | null
+  fichaId: number | null
+  fichaCodigo: string | null
+  loteId: number | null
+  loteCodigo: string | null
+  campo: string | null
+  pagina: number | null
+  valorAnterior: string | null // sugestão da extração
+  valorPosterior: string | null // correção humana
+  justificativa: string | null
+  documento: { id: number; nomeOriginal: string; url: string } | null
+}
+
+export interface FiltrosAuditoria {
+  busca: string
+  de: string // AAAA-MM-DD ou ''
+  ate: string
+  tipo: TipoEventoApi | ''
+  usuarioId: number | null
+}
+
+export const EVENTOS_POR_PAGINA = 10
+
+function parametrosAuditoria(filtros: FiltrosAuditoria): URLSearchParams {
+  const parametros = new URLSearchParams()
+  if (filtros.busca) parametros.set('busca', filtros.busca)
+  if (filtros.de) parametros.set('de', filtros.de)
+  if (filtros.ate) parametros.set('ate', filtros.ate)
+  if (filtros.tipo) parametros.set('tipo', filtros.tipo)
+  if (filtros.usuarioId) parametros.set('usuarioId', String(filtros.usuarioId))
+  return parametros
+}
+
+export function listarEventosAuditoria(filtros: FiltrosAuditoria, pagina: number): Promise<ListaEventosAuditoriaApi> {
+  const parametros = parametrosAuditoria(filtros)
+  parametros.set('pagina', String(pagina))
+  parametros.set('limite', String(EVENTOS_POR_PAGINA))
+  return requisitar<ListaEventosAuditoriaApi>(`/auditoria/eventos?${parametros.toString()}`)
+}
+
+export function buscarEventoAuditoria(id: number): Promise<EventoAuditoriaDetalheApi> {
+  return requisitar<EventoAuditoriaDetalheApi>(`/auditoria/eventos/${id}`)
+}
+
+export function listarUsuarios(): Promise<{ id: number; nome: string; email: string }[]> {
+  return requisitar('/usuarios')
+}
+
+// A exportação devolve um arquivo (não JSON) e precisa do header X-Usuario-Id,
+// então não dá para usar um <a href>: baixamos como Blob e o componente dispara o download.
+export async function exportarTrilhaAuditoria(filtros: FiltrosAuditoria): Promise<{ blob: Blob; nome: string }> {
+  const headers = new Headers()
+  if (tokenAtual.value) headers.set('X-Usuario-Id', tokenAtual.value)
+
+  let resposta: Response
+  try {
+    resposta = await fetch(`${API_URL}/auditoria/eventos/exportar?${parametrosAuditoria(filtros).toString()}`, { headers })
+  } catch {
+    throw new ErroApi(`Não foi possível conectar ao servidor (${API_URL}). Verifique se o backend está rodando.`)
+  }
+
+  if (!resposta.ok) {
+    const corpo = await resposta.json().catch(() => null)
+    const mensagem = corpo?.message ?? corpo?.erro ?? `Erro ${resposta.status} ao exportar a trilha.`
+    throw new ErroApi(Array.isArray(mensagem) ? mensagem.join(' ') : mensagem, resposta.status)
+  }
+
+  const nome = resposta.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/)?.[1] ?? 'trilha-auditoria.xlsx'
+  return { blob: await resposta.blob(), nome }
 }
