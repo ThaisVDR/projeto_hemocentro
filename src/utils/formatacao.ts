@@ -46,14 +46,6 @@ export function calcularIdade(iso?: string | null, hoje = new Date()): number | 
 export function semAcento(texto: string): string {
   return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
-
-// "2026-10-09T13:10:05.000Z" → "09/10/2026 10:10" (horário local). Se não der para ler, devolve o texto como veio.
-export function formatarDataHora(iso?: string | null): string {
-  if (!iso) return ''
-  const data = new Date(iso)
-  return isNaN(data.getTime()) ? iso : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-}
-
 // "hoje, 10:18", "ontem, 22:05" ou "09/10, 14:30" (horário local). Para listas de atividade recente.
 export function formatarQuando(iso?: string | null, agora: Date = new Date()): string {
   if (!iso) return ''
@@ -65,6 +57,16 @@ export function formatarQuando(iso?: string | null, agora: Date = new Date()): s
   if (data.toDateString() === agora.toDateString()) return `hoje, ${hora}`
   if (data.toDateString() === ontem.toDateString()) return `ontem, ${hora}`
   return `${data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}, ${hora}`
+// { fichaCodigo: 'FIC-0276', pagina: 2 } → "Fonte: FIC-0276 • página 2"
+}
+
+// "2026-10-09T13:10:05.000Z" → "09/10/2026, 10:10" (horário local). Se não der para ler, devolve o texto como veio.
+export function formatarDataHora(iso?: string | null): string {
+  if (!iso) return ''
+  const data = new Date(iso)
+  return isNaN(data.getTime()) ? iso : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 // { fichaCodigo: 'FIC-0276', pagina: 2 } → "Fonte: FIC-0276 • página 2"
 export function textoOrigem(origem?: { fichaCodigo: string | null; pagina: number | null } | null): string {
   if (!origem || !origem.fichaCodigo) return 'Fonte não registrada'
