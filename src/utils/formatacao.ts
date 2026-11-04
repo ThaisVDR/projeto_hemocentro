@@ -53,3 +53,20 @@ export function formatarDataHora(iso?: string | null): string {
   const data = new Date(iso)
   return isNaN(data.getTime()) ? iso : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
+
+// "hoje, 10:18", "ontem, 22:05" ou "09/10, 14:30" (horário local). Para listas de atividade recente.
+export function formatarQuando(iso?: string | null, agora: Date = new Date()): string {
+  if (!iso) return ''
+  const data = new Date(iso)
+  if (isNaN(data.getTime())) return iso
+  const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const ontem = new Date(agora)
+  ontem.setDate(agora.getDate() - 1)
+  if (data.toDateString() === agora.toDateString()) return `hoje, ${hora}`
+  if (data.toDateString() === ontem.toDateString()) return `ontem, ${hora}`
+  return `${data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}, ${hora}`
+// { fichaCodigo: 'FIC-0276', pagina: 2 } → "Fonte: FIC-0276 • página 2"
+export function textoOrigem(origem?: { fichaCodigo: string | null; pagina: number | null } | null): string {
+  if (!origem || !origem.fichaCodigo) return 'Fonte não registrada'
+  return origem.pagina ? `Fonte: ${origem.fichaCodigo} • página ${origem.pagina}` : `Fonte: ${origem.fichaCodigo}`
+}

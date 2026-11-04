@@ -27,6 +27,18 @@ export const ROTULO_ABO_RH = {
   O_NEGATIVO: 'O-'
 } as const
 
+export const ROTULO_RESULTADO_TESTE = {
+  NAO_REALIZADO: 'Não realizado',
+  POSITIVO: 'Positivo',
+  NEGATIVO: 'Negativo'
+} as const
+
+export const ROTULO_RH = {
+  POSITIVO: 'Positivo',
+  NEGATIVO: 'Negativo',
+  NAO_DETERMINADO: 'Não determinado'
+} as const
+
 export type RacaApi = keyof typeof ROTULO_RACA
 export type SexoApi = keyof typeof ROTULO_SEXO
 export type AboRhApi = keyof typeof ROTULO_ABO_RH
@@ -52,6 +64,14 @@ export function traduzirSexo(valor?: string | null): string {
 
 export function traduzirAboRh(valor?: string | null): string {
   return traduzir(ROTULO_ABO_RH, valor, 'Não informado')
+}
+
+export function traduzirResultadoTeste(valor?: string | null): string {
+  return traduzir(ROTULO_RESULTADO_TESTE, valor, '')
+}
+
+export function traduzirRh(valor?: string | null): string {
+  return traduzir(ROTULO_RH, valor, '')
 }
 
 function paraOpcoes(mapa: Record<string, string>): Opcao[] {
