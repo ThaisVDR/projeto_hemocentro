@@ -85,12 +85,14 @@
       <template v-else-if="paciente">
         <CabecalhoPaciente :paciente="paciente" />
         <PerfilTransfusional :paciente="paciente" />
+        <HistoricoPaciente :paciente-id="paciente.id" />
       </template>
     </template>
   </section>
 </template>
 
 <script lang="ts">
+import HistoricoPaciente from '@/components/prontuario/HistoricoPaciente.vue'
 import { traduzirAboRh, traduzirRaca } from '@/domain/traducao'
 import PageHeader from '@/components/PageHeader.vue'
 import { computed, defineComponent, ref, watch } from 'vue'
@@ -104,7 +106,7 @@ import PerfilTransfusional from '@/components/prontuario/PerfilTransfusional.vue
 
 export default defineComponent({
   name: 'ProntuarioView',
-  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente, PerfilTransfusional },
+  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente, PerfilTransfusional, HistoricoPaciente },
   setup() {
     const nome = ref('')
     const dataNascimento = ref('')
