@@ -58,7 +58,9 @@
                 {{ status[envio.documento.status].rotulo }}
               </span>
               <small v-if="envio.erro" class="erro">{{ envio.erro }}</small>
-              <small v-if="envio.documento?.erro" class="erro">{{ envio.documento.erro }}</small>
+              <small v-if="envio.documento?.erro" class="erro" :title="envio.documento.erro">
+                {{ erroDeLeitura(envio.documento.erro) }}
+              </small>
             </td>
             <td>
               <router-link v-if="envio.documento?.status === 'AGUARDANDO_REVISAO'"
@@ -197,13 +199,31 @@ export default defineComponent({
       entrada.value = ''
     }
 
+    // O backend devolve o erro técnico da IA; aqui viramos uma frase que a pessoa entende.
+    // O texto completo continua no title (passar o mouse em cima mostra).
+    function erroDeLeitura(erro: string): string {
+      if (erro.includes('429') || /quota/i.test(erro)) {
+        return 'A cota diária da IA acabou. Tente reprocessar amanhã.'
+      }
+      if (erro.includes('503') || /high demand|overloaded/i.test(erro)) {
+        return 'A IA está sobrecarregada no momento. Tente reprocessar em alguns minutos.'
+      }
+      if (/aborted|timeout|tempo/i.test(erro)) {
+        return 'A leitura demorou demais e foi interrompida. Tente reprocessar.'
+      }
+      if (/JSON/.test(erro)) {
+        return 'A IA devolveu uma resposta incompleta. Tente reprocessar.'
+      }
+      return 'Não foi possível ler esta ficha. Tente reprocessar.'
+    }
+
     function aoSoltar(evento: DragEvent) {
       arrastando.value = false
       adicionar(evento.dataTransfer?.files)
     }
 
     return {
-      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, reprocessar,
+      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, reprocessar, erroDeLeitura,
       status: STATUS_FICHA, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
     }
   }
