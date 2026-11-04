@@ -60,6 +60,10 @@
                 :to="{ name: 'revisar', params: { fichaId: ficha.id } }" class="link">
                 {{ ficha.status === 'VALIDADA' || ficha.status === 'RECUSADA' ? 'Ver' : 'Revisar' }} →
               </router-link>
+              <button v-if="podeRecusar(ficha)" type="button" class="link link--recusar"
+                @click="recusando = ficha">
+                Recusar
+              </button>
             </td>
           </tr>
         </tbody>
@@ -78,6 +82,8 @@
     </div>
 
     <p class="nota">CPF ausente não bloqueia: a identificação usa nome, data de nascimento e nome da mãe.</p>
+
+    <DialogoRecusa v-if="recusando" @confirmar="confirmarRecusa" @fechar="recusando = null" />
   </section>
 </template>
 
@@ -86,7 +92,11 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { RefreshCw, Search, Upload } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA, StatusFicha } from '@/domain/revisao'
-import { FICHAS_POR_PAGINA, FichaFilaApi, listarFilaRevisao } from '@/services/api'
+import { FICHAS_POR_PAGINA, FichaFilaApi, listarFilaRevisao, recusarFicha } from '@/services/api'
+import { MotivoRecusa } from '@/domain/revisao'
+import { estaAutenticado, tokenAtual } from '@/services/sessao'
+import { avisar } from '@/composables/useAvisos'
+import DialogoRecusa from '@/components/revisao/DialogoRecusa.vue'
 
 type Filtro = 'pendentes' | StatusFicha
 
@@ -95,7 +105,7 @@ const PENDENTES: StatusFicha[] = ['AGUARDANDO_REVISAO', 'EM_REVISAO', 'COM_PENDE
 
 export default defineComponent({
   name: 'FilaRevisaoView',
-  components: { RefreshCw, Search, Upload, PageHeader },
+  components: { RefreshCw, Search, Upload, PageHeader, DialogoRecusa },
   setup() {
     const fichas = ref<FichaFilaApi[]>([])
     const contadores = ref<Record<string, number>>({})
@@ -105,6 +115,7 @@ export default defineComponent({
     const erro = ref<string | null>(null)
     const busca = ref('')
     const filtroAtivo = ref<Filtro>('pendentes')
+    const recusando = ref<FichaFilaApi | null>(null)
 
     const filtros: { valor: Filtro; rotulo: string }[] = [
       { valor: 'pendentes', rotulo: 'Pendentes' },
@@ -161,6 +172,26 @@ export default defineComponent({
       carregar()
     }
 
+    // Recusa rápida (ex.: ficha duplicada): o backend aceita fichas livres ou em revisão pela própria pessoa.
+    function podeRecusar(ficha: FichaFilaApi) {
+      if (!estaAutenticado.value) return false
+      if (ficha.status === 'AGUARDANDO_REVISAO' || ficha.status === 'COM_PENDENCIA') return true
+      return ficha.status === 'EM_REVISAO' && String(ficha.revisor?.id) === tokenAtual.value
+    }
+
+    async function confirmarRecusa(escolha: { motivo: MotivoRecusa; observacao: string | null }) {
+      const ficha = recusando.value
+      recusando.value = null
+      if (!ficha) return
+      try {
+        await recusarFicha(String(ficha.id), escolha.motivo, escolha.observacao)
+        avisar('alerta', `${ficha.codigo} recusada. Ela saiu da fila e não entra no prontuário.`)
+        carregar()
+      } catch (e) {
+        avisar('erro', (e as Error).message)
+      }
+    }
+
     function formatarDataHora(iso: string) {
       const data = new Date(iso)
       return isNaN(data.getTime()) ? iso : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -170,7 +201,8 @@ export default defineComponent({
 
     return {
       fichas, carregando, erro, busca, filtroAtivo, filtros, pagina, totalPaginas,
-      contar, carregar, escolherFiltro, buscar, irParaPagina, formatarDataHora, status: STATUS_FICHA
+      contar, carregar, escolherFiltro, buscar, irParaPagina, formatarDataHora, status: STATUS_FICHA,
+      recusando, podeRecusar, confirmarRecusa
     }
   }
 })
@@ -292,5 +324,16 @@ export default defineComponent({
   margin-top: 12px;
   font-size: 11px;
   color: var(--cor-texto-suave);
+}
+
+.link--recusar {
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--cor-texto-suave);
+  cursor: pointer;
 }
 </style>
