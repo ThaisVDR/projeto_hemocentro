@@ -53,3 +53,9 @@ export function formatarDataHora(iso?: string | null): string {
   const data = new Date(iso)
   return isNaN(data.getTime()) ? iso : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
+
+// { fichaCodigo: 'FIC-0276', pagina: 2 } → "Fonte: FIC-0276 • página 2"
+export function textoOrigem(origem?: { fichaCodigo: string | null; pagina: number | null } | null): string {
+  if (!origem || !origem.fichaCodigo) return 'Fonte não registrada'
+  return origem.pagina ? `Fonte: ${origem.fichaCodigo} • página ${origem.pagina}` : `Fonte: ${origem.fichaCodigo}`
+}

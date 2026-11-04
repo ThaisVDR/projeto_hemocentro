@@ -7,6 +7,9 @@
       <router-link v-if="pacienteId" :to="{ name: 'prontuarios' }" class="botao">
         <ArrowLeft :size="16" /> Voltar à busca
       </router-link>
+      <router-link v-if="pacienteId" :to="{ name: 'ficha-completa', params: { pacienteId } }" class="botao botao--primario">
+      <FileText :size="16" /> Ver ficha completa
+     </router-link>
     </PageHeader>
 
     <template v-if="!pacienteId">
@@ -98,7 +101,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import { computed, defineComponent, ref, watch } from 'vue'
 import CampoData from '@/components/CampoData.vue'
 import { buscarPaciente, buscarPacientes, PacienteDetalheApi, PacienteResumoApi } from '@/services/api'
-import { ChevronRight, ArrowLeft } from 'lucide-vue-next'
+import { ChevronRight, ArrowLeft,FileText  } from 'lucide-vue-next'
 import { formatarData, iniciais } from '@/utils/formatacao'
 import { useRoute } from 'vue-router'
 import CabecalhoPaciente from '@/components/prontuario/CabecalhoPaciente.vue'
@@ -106,7 +109,7 @@ import PerfilTransfusional from '@/components/prontuario/PerfilTransfusional.vue
 
 export default defineComponent({
   name: 'ProntuarioView',
-  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, CabecalhoPaciente, PerfilTransfusional, HistoricoPaciente },
+  components: { PageHeader, CampoData, ChevronRight, ArrowLeft, FileText, CabecalhoPaciente, PerfilTransfusional, HistoricoPaciente },
   setup() {
     const nome = ref('')
     const dataNascimento = ref('')
