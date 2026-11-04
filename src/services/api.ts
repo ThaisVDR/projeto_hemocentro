@@ -3,7 +3,6 @@ import { tokenAtual } from '@/services/sessao'
 import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
 import { TipoEventoApi } from '@/domain/auditoria'
 
-
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
 
 const esperar = (ms = 600) => new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -389,10 +388,6 @@ export interface HistoricoItemApi {
   validacao: { validadoPor: string | null; validadoEm: string | null }
 }
 
-export function buscarHistorico(id: string): Promise<HistoricoItemApi[]> {
-  return requisitar<HistoricoItemApi[]>(`/pacientes/${encodeURIComponent(id)}/historico`)
-}
-
 // Formato que as telas do Prontuário usam (os componentes não mudam).
 export interface AnticorpoPacienteApi {
   data: string | null
@@ -537,6 +532,10 @@ export interface HistoricoItemApi {
   validacao: { validadoPor: string | null; validadoEm: string | null }
 }
 
+export function buscarHistorico(id: string): Promise<HistoricoItemApi[]> {
+  return requisitar<HistoricoItemApi[]>(`/pacientes/${encodeURIComponent(id)}/historico`)
+}
+
 export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
   const ficha = await requisitar<FichaCompletaApi>(`/pacientes/${encodeURIComponent(id)}/ficha-completa`)
   const { paciente: p, ultimaValidacao, pesquisasImunoHematologicas: pesquisas } = ficha
@@ -608,8 +607,6 @@ export function listarPrioridadesRevisao(limite = 3): Promise<FilaRevisaoApi> {
   parametros.set('limite', String(limite))
   return requisitar<FilaRevisaoApi>(`/fichas?${parametros.toString()}`)
 }
-
-
 
 // Mais recentes primeiro.
 export function listarEventosRecentes(limite = 3): Promise<ListaPaginadaApi<EventoAuditoriaApi>> {
