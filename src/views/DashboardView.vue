@@ -243,6 +243,12 @@ export default defineComponent({
 </script>
 
 <style scoped>
+
+.periodo + .botao {
+  align-self: flex-end;
+}
+
+
 .periodo {
   display: flex;
   align-items: flex-end;
