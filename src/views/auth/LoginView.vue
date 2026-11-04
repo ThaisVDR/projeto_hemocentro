@@ -30,7 +30,6 @@
 
     
     <nav class="form__links">
-      <router-link class="form__link" :to="{ name: 'esqueci-senha' }">Esqueci minha senha</router-link>
       <router-link class="form__link" :to="{ name: 'cadastro' }">Cadastra-se</router-link>
     </nav>
 
@@ -54,7 +53,6 @@ export default defineComponent({
     const roteador = useRouter()
     const destino = typeof rota.query.redirect === 'string' ? rota.query.redirect : ''
 
-
     const { valores, erros, enviando, erroGeral, validarCampo, enviar } = useFormulario(
       { email: '', senha: '' },
       {
@@ -65,9 +63,16 @@ export default defineComponent({
 
     async function aoEnviar() {
       const ok = await enviar(async (dados) => {
-        iniciarSessao(await entrar(dados))
+        const resposta = await entrar(dados)
+        iniciarSessao(resposta)
       })
-      if (ok) roteador.push(destino.startsWith('/') && !destino.startsWith('//') ? destino : { name: 'dashboard' })
+
+      if (ok) {
+        const proximaRota = destino.startsWith('/') && !destino.startsWith('//')
+          ? destino
+          : { name: 'dashboard' }
+        roteador.push(proximaRota)
+      }
     }
 
     return { valores, erros, enviando, erroGeral, validarCampo, aoEnviar }

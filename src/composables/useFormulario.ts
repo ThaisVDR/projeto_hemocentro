@@ -1,6 +1,26 @@
 import { reactive, ref } from 'vue'
 import type { Regra } from '@/utils/validacao'
 
+function extrairMensagemAmigavel(e: any): string {
+  const mensagem = e?.response?.data?.message || e?.response?.data?.mensagem || e?.message || ''
+  if (
+    typeof mensagem === 'string' &&
+    (mensagem.includes('prisma') || mensagem.includes('C:\\Users') || mensagem.includes('invocation in'))
+  ) {
+    return 'Ocorreu um erro interno de processamento. Tente mais tarde.'
+  }
+
+  const status = e?.response?.status
+  if (status === 409) return 'E-mail ou registro já cadastrado no sistema.'
+  if (status === 401) return 'E-mail ou senha incorretos.'
+  if (status === 500) return 'Serviço temporariamente indisponível.'
+
+  if (typeof mensagem === 'string' && mensagem.trim().length > 0) {
+    return mensagem
+  }
+  return 'Não foi possível concluir. Tente novamente.'
+}
+
 export function useFormulario<T extends Record<string, string>>(
   inicial: T,
   regras: Partial<Record<keyof T, Regra[]>>
@@ -34,8 +54,8 @@ export function useFormulario<T extends Record<string, string>>(
     try {
       await acao({ ...valores })
       return true
-    } catch (e) {
-      erroGeral.value = e instanceof Error ? e.message : 'Não foi possível concluir. Tente novamente.'
+    } catch (e: any) {
+      erroGeral.value = extrairMensagemAmigavel(e)
       return false
     } finally {
       enviando.value = false
