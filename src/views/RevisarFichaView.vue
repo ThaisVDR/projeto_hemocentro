@@ -93,7 +93,7 @@
             <CampoRevisao :campo="ficha.identificacao.diagnostico" v-bind="eventos(ficha.identificacao.diagnostico)" />
           </div>
 
-          <div v-if="semelhantes.length" class="semelhante">
+          <div v-if="semelhantes.length && !finalizada" class="semelhante">
             <Users :size="18" />
             <div>
               <strong>Possível paciente já cadastrado</strong>
