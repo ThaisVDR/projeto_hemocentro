@@ -59,9 +59,6 @@ export function formatarQuando(iso?: string | null, agora: Date = new Date()): s
   return `${data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}, ${hora}`
 }
 
-// { fichaCodigo: 'FIC-0276', pagina: 2 } → "Fonte: FIC-0276 • página 2"
-}
-
 // "2026-10-09T13:10:05.000Z" → "09/10/2026, 10:10" (horário local). Se não der para ler, devolve o texto como veio.
 export function formatarDataHora(iso?: string | null): string {
   if (!iso) return ''
