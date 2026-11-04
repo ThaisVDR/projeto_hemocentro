@@ -414,7 +414,6 @@ export interface PacienteDetalheApi {
   ultimaValidacao: { em: string; por: string } | null
 }
 
-// Parte da resposta de GET /pacientes/:id/ficha-completa que o Prontuário aproveita.
 // Resposta de GET /pacientes/:id/ficha-completa (somente leitura, só registros validados).
 // O Prontuário aproveita uma parte (buscarPaciente); a tela Ficha completa usa tudo.
 // Datas em AAAA-MM-DD; enums chegam como no banco (O_POSITIVO, NEGATIVO...) e são traduzidos em domain/traducao.ts.
