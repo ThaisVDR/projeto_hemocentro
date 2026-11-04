@@ -93,7 +93,7 @@
             <CampoRevisao :campo="ficha.identificacao.diagnostico" v-bind="eventos(ficha.identificacao.diagnostico)" />
           </div>
 
-          <div v-if="semelhantes.length" class="semelhante">
+          <div v-if="semelhantes.length && !finalizada" class="semelhante">
             <Users :size="18" />
             <div>
               <strong>Possível paciente já cadastrado</strong>
@@ -365,6 +365,10 @@
   </section>
   <DialogoRecusa v-if="recusando" @confirmar="confirmarRecusa" @fechar="recusando = false" />
   <DialogoPendencia v-if="pendenciando" @confirmar="confirmarPendencia" @fechar="pendenciando = false" />
+  <DialogoConfirmacao v-if="assumindo && revisor" titulo="Assumir revisão"
+    :texto="`${revisor.nome} está revisando esta ficha. Ao assumir, a revisão passa para você e fica registrada na auditoria.`"
+    campo-texto="Por que você vai assumir? (opcional)" placeholder="Ex.: a colega está de folga"
+    rotulo-confirmar="Assumir revisão" @confirmar="confirmarAssumir" @fechar="assumindo = false" />
 </template>
 
 <script lang="ts">
@@ -402,6 +406,7 @@ import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
 import DialogoRecusa from '@/components/revisao/DialogoRecusa.vue'
 import DialogoPendencia from '@/components/revisao/DialogoPendencia.vue'
+import DialogoConfirmacao from '@/components/DialogoConfirmacao.vue'
 import { OPCOES_ABO_RH, OPCOES_RACA, OPCOES_SEXO, ROTULO_ABO_RH } from '@/domain/traducao'
 
 
@@ -421,7 +426,7 @@ export default defineComponent({
   components: {
     AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users,
     PageHeader, ResumoImunohematologico, CampoRevisao, ConferenciaTabela, DocumentoOriginal, SecaoRevisao, CampoData,
-    CampoColaborador, CampoCidade, LegendaEstados, DialogoRecusa, DialogoPendencia
+    CampoColaborador, CampoCidade, LegendaEstados, DialogoRecusa, DialogoPendencia, DialogoConfirmacao
   },
   setup() {
     const rota = useRoute()
@@ -439,6 +444,7 @@ export default defineComponent({
     const indicePesquisa = ref<number | null>(null)
     const recusando = ref(false)
     const pendenciando = ref(false)
+    const assumindo = ref(false)
     const semelhantes = ref<PacienteSemelhanteApi[]>([])
     // undefined = ainda não escolheu; null = é outra pessoa (paciente novo); texto = id do paciente existente.
     const pacienteEscolhido = ref<string | null | undefined>(undefined)
@@ -538,15 +544,16 @@ export default defineComponent({
       }
     }
 
-    async function tomarRevisao() {
-      if (!fichaId.value || !revisor.value) return
-      const justificativa = window.prompt(
-        `${revisor.value.nome} está revisando esta ficha. Por que você vai assumir? (opcional)`
-      )
-      if (justificativa === null) return
+    function tomarRevisao() {
+      assumindo.value = true
+    }
+
+    async function confirmarAssumir(justificativa: string | null) {
+      assumindo.value = false
+      if (!fichaId.value) return
       salvando.value = true
       try {
-        const resposta = await assumirRevisao(fichaId.value, justificativa.trim() || null)
+        const resposta = await assumirRevisao(fichaId.value, justificativa)
         revisor.value = resposta.revisor
         avisar('sucesso', 'Você assumiu a revisão desta ficha.')
       } catch (e) {
@@ -760,7 +767,7 @@ export default defineComponent({
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
       selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar, recusando, confirmarRecusa,
-      pendenciando, confirmarPendencia, semelhantes, pacienteEscolhido, falta, formatarData,
+      pendenciando, confirmarPendencia, assumindo, confirmarAssumir, semelhantes, pacienteEscolhido, falta, formatarData,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
