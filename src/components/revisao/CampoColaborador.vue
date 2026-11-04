@@ -3,9 +3,12 @@
     <CampoBusca :model-value="modelValue" :opcoes="nomes" placeholder="Digite 2 letras…"
       @update:model-value="valor => $emit('update:modelValue', valor)" @foco="emFoco = true" @sair="aoSair" />
     <button v-if="podeCadastrar && !emFoco" type="button" class="campo-colaborador__cadastrar" :disabled="cadastrando"
-      @click="cadastrar">
+      @click="confirmando = true">
       + Cadastrar
     </button>
+    <DialogoConfirmacao v-if="confirmando" titulo="Cadastrar colaborador"
+      :texto="`Cadastrar &quot;${nomeDigitado}&quot; como colaborador? Confira a grafia: o cadastro não pode ser editado depois.`"
+      rotulo-confirmar="Cadastrar" @confirmar="cadastrar" @fechar="confirmando = false" />
     <small v-if="erro" class="campo-colaborador__erro">{{ erro }}</small>
   </div>
 </template>
@@ -15,10 +18,11 @@ import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import { buscarColaboradores, cadastrarColaborador, ColaboradorApi } from '@/services/api'
 import { semAcento } from '@/utils/formatacao'
 import CampoBusca from './CampoBusca.vue'
+import DialogoConfirmacao from '@/components/DialogoConfirmacao.vue'
 
 export default defineComponent({
   name: 'CampoColaborador',
-  components: { CampoBusca },
+  components: { CampoBusca, DialogoConfirmacao },
   props: {
     modelValue: { type: String as PropType<string | null>, default: null }
   },
@@ -27,6 +31,7 @@ export default defineComponent({
     const sugestoes = ref<ColaboradorApi[]>([])
     const cadastrando = ref(false)
     const erro = ref<string | null>(null)
+    const confirmando = ref(false)
     // O "+ Cadastrar" só aparece depois que a pessoa sai do campo, para não cadastrar um nome pela metade.
     const emFoco = ref(false)
     let espera: number | undefined
@@ -67,7 +72,7 @@ export default defineComponent({
     }
 
     async function cadastrar() {
-      if (!window.confirm(`Cadastrar "${nomeDigitado.value}" como colaborador?`)) return
+      confirmando.value = false
       cadastrando.value = true
       erro.value = null
       try {
@@ -81,7 +86,7 @@ export default defineComponent({
       }
     }
 
-    return { nomes, cadastrando, erro, emFoco, podeCadastrar, aoSair, cadastrar }
+    return { nomes, nomeDigitado, cadastrando, confirmando, erro, emFoco, podeCadastrar, aoSair, cadastrar }
   }
 })
 </script>
