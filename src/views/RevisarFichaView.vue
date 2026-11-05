@@ -24,6 +24,18 @@
     <p v-if="carregando" class="mensagem mensagem--info">Carregando ficha…</p>
     <p v-if="mensagem" class="mensagem" :class="`mensagem--${mensagem.tipo}`">{{ mensagem.texto }}</p>
 
+    <div v-if="pendenciaVisivel && pendencia" class="mensagem mensagem--alerta pendencia">
+      <Flag :size="16" />
+      <div>
+        <strong>
+          Pendência sinalizada
+          <template v-if="pendencia.sinalizadoPor">por {{ pendencia.sinalizadoPor.nome }}</template>
+          em {{ formatarDataHora(pendencia.sinalizadoEm) }}
+        </strong>
+        <p>{{ pendencia.motivo || 'Sem motivo registrado.' }}</p>
+      </div>
+    </div>
+
     <div v-if="!carregando && fichaId && !finalizada" class="cartao revisor">
       <template v-if="ficha.status === 'AGUARDANDO_REVISAO' || ficha.status === 'COM_PENDENCIA'">
         <span>Ninguém está revisando esta ficha.</span>
@@ -395,11 +407,11 @@ import {
 } from '@/domain/revisao'
 import {
   aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao,
-  iniciarRevisao, AlteracaoApi, buscarSemelhantes, PacienteSemelhanteApi
+  iniciarRevisao, AlteracaoApi, buscarSemelhantes, PacienteSemelhanteApi, PendenciaApi
 } from '@/services/api'
-import { estaAutenticado, idUsuarioAtual } from '@/services/sessao'
+import { estaAutenticado, idUsuarioAtual, usuarioLogado } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
-import { formatarData } from '@/utils/formatacao'
+import { formatarData, formatarDataHora } from '@/utils/formatacao'
 import { avisar, fecharErros } from '@/composables/useAvisos'
 import { mensagemErroLeitura } from '@/utils/erros'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
@@ -441,6 +453,9 @@ export default defineComponent({
     const carregando = ref(false)
     const salvando = ref(false)
     const revisor = ref<{ id: number; nome: string } | null>(null)
+    // Motivo da última pendência: aparece enquanto a ficha está com pendência ou em revisão de novo.
+    const pendencia = ref<PendenciaApi | null>(null)
+    const pendenciaVisivel = computed(() => ficha.status === 'COM_PENDENCIA' || ficha.status === 'EM_REVISAO')
     const original = ref<FichaEmRevisao | null>(null)
     const indicePesquisa = ref<number | null>(null)
     const tiposNoBackend = ref<(string | null)[]>([])
@@ -522,6 +537,7 @@ export default defineComponent({
         indicePesquisa.value = indicePesquisaPrincipal(detalhe)
         tiposNoBackend.value = tiposDosKits(detalhe)
         revisor.value = detalhe.revisor
+        pendencia.value = detalhe.pendencia ?? null
         carregarSemelhantes()
         const nomeArquivo = detalhe.documento.nomeOriginal
         trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
@@ -752,6 +768,12 @@ export default defineComponent({
       if (ok) {
         ficha.status = 'COM_PENDENCIA'
         revisor.value = null
+        const quem = usuarioLogado.value
+        pendencia.value = {
+          motivo,
+          sinalizadoPor: quem ? { id: quem.id, nome: quem.nome } : null,
+          sinalizadoEm: new Date().toISOString()
+        }
       }
     }
 
@@ -772,6 +794,7 @@ export default defineComponent({
     }
 
     return {
+      pendencia, pendenciaVisivel, formatarDataHora,
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
       fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao, estaAutenticado,
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
@@ -802,6 +825,16 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.pendencia {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pendencia p {
+  margin: 4px 0 0;
 }
 
 .revisor {

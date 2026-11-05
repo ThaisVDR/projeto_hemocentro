@@ -125,6 +125,14 @@ export interface FichaDetalheApi {
   documento: { id: number; nomeOriginal: string; totalPaginas: number | null }
   revisor: { id: number; nome: string } | null
   dados: FichaExtraidaApi | null
+  // Última pendência sinalizada (motivo, quem e quando). Só vem do backend que já tem esse campo.
+  pendencia?: PendenciaApi | null
+}
+
+export interface PendenciaApi {
+  motivo: string | null
+  sinalizadoPor: { id: number; nome: string } | null
+  sinalizadoEm: string
 }
 
 export interface FichaResumoApi {
