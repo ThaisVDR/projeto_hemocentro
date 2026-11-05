@@ -2,13 +2,15 @@ import { Reacao, extrairAnticorpos, interpretarReacao } from '@/domain/fenotipo'
 import { tokenAtual } from '@/services/sessao'
 import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
 import { TipoEventoApi } from '@/domain/auditoria'
+import { ehErroTecnico, MENSAGEM_ERRO_GENERICA } from '@/utils/erros'
 
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
 
 const esperar = (ms = 600) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 export class ErroApi extends Error {
-  constructor(mensagem: string, readonly status?: number) {
+  // detalhe = texto técnico original do servidor; fica só para o console, nunca para a tela.
+  constructor(mensagem: string, readonly status?: number, readonly detalhe?: string) {
     super(mensagem)
   }
 }
@@ -25,8 +27,13 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
 
   const corpo = await resposta.json().catch(() => null)
   if (!resposta.ok) {
-    const mensagem = corpo?.message ?? corpo?.erro ?? `Erro ${resposta.status} ao acessar ${caminho}.`
-    throw new ErroApi(Array.isArray(mensagem) ? mensagem.join(' ') : mensagem, resposta.status)
+    const bruta = corpo?.message ?? corpo?.erro ?? `Erro ${resposta.status} ao acessar ${caminho}.`
+    const mensagem: string = Array.isArray(bruta) ? bruta.join(' ') : String(bruta)
+    if (ehErroTecnico(mensagem)) {
+      console.error(`[API] ${opcoes.method ?? 'GET'} ${caminho} → ${resposta.status}:`, mensagem)
+      throw new ErroApi(MENSAGEM_ERRO_GENERICA, resposta.status, mensagem)
+    }
+    throw new ErroApi(mensagem, resposta.status)
   }
   return corpo as T
 }
@@ -703,8 +710,13 @@ export async function exportarTrilhaAuditoria(filtros: FiltrosAuditoria): Promis
 
   if (!resposta.ok) {
     const corpo = await resposta.json().catch(() => null)
-    const mensagem = corpo?.message ?? corpo?.erro ?? `Erro ${resposta.status} ao exportar a trilha.`
-    throw new ErroApi(Array.isArray(mensagem) ? mensagem.join(' ') : mensagem, resposta.status)
+    const bruta = corpo?.message ?? corpo?.erro ?? `Erro ${resposta.status} ao exportar a trilha.`
+    const mensagem: string = Array.isArray(bruta) ? bruta.join(' ') : String(bruta)
+    if (ehErroTecnico(mensagem)) {
+      console.error(`[API] exportar trilha → ${resposta.status}:`, mensagem)
+      throw new ErroApi(MENSAGEM_ERRO_GENERICA, resposta.status, mensagem)
+    }
+    throw new ErroApi(mensagem, resposta.status)
   }
 
   const nome = resposta.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/)?.[1] ?? 'trilha-auditoria.xlsx'

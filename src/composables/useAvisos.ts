@@ -23,6 +23,8 @@ export function fecharErros(): void {
 }
 
 export function avisar(tipo: TipoAviso, texto: string): void {
+  // O mesmo aviso já na tela não é repetido (evita dois toasts iguais para uma só falha).
+  if (avisos.value.some(aviso => aviso.tipo === tipo && aviso.texto === texto)) return
   const id = ++proximoId
   avisos.value.push({ id, tipo, texto })
   if (tipo !== 'erro') window.setTimeout(() => fecharAviso(id), DURACAO_MS)

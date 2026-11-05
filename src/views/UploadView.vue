@@ -53,13 +53,17 @@
             <td>{{ envio.tamanho }}</td>
             <td>
               <span v-if="envio.estado === 'enviando'" class="selo selo--info">Enviando…</span>
-              <span v-else-if="envio.estado === 'erro'" class="selo selo--perigo" :title="envio.erro">Falhou</span>
-              <span v-else-if="envio.documento?.status" class="selo" :class="status[envio.documento.status].classe">
-                {{ status[envio.documento.status].rotulo }}
+              <span v-else-if="envio.estado === 'erro'" class="selo selo--perigo"
+                :title="envio.erro ?? undefined">Falhou</span>
+              <span v-else-if="situacao(envio)" class="selo" :class="situacao(envio)?.classe">
+                {{ situacao(envio)?.rotulo }}
               </span>
               <small v-if="envio.erro" class="erro">{{ envio.erro }}</small>
-              <small v-if="envio.documento?.erro" class="erro" :title="envio.documento.erro">
+              <small v-if="envio.documento?.erro" class="erro">
                 {{ erroDeLeitura(envio.documento.erro) }}
+              </small>
+              <small v-else-if="demorando(envio)" class="erro">
+                A leitura está demorando mais que o normal. Você pode reprocessar.
               </small>
             </td>
             <td>
@@ -67,12 +71,11 @@
                 :to="{ name: 'revisar', params: { fichaId: envio.documento.fichaId } }" class="link">
                 Revisar →
               </router-link>
-              <BotaoReprocessar v-else-if="envio.documento?.status === 'FALHA_LEITURA'"
+              <BotaoReprocessar v-else-if="podeReprocessar(envio) && envio.documento"
                 :documento-id="envio.documento.id" :falhou-em="envio.documento.falhouEm"
                 @reprocessado="aoReprocessar(envio)" />
               <button v-else-if="envio.estado === 'erro'" type="button" class="link"
-                @click="enviarGrupo([envio])">Tentar de
-                novo</button>
+                @click="enviarGrupo([envio])">Tentar de novo</button>
             </td>
           </tr>
         </tbody>
@@ -88,6 +91,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import BotaoReprocessar from '@/components/upload/BotaoReprocessar.vue'
 import { STATUS_FICHA } from '@/domain/revisao'
 import { buscarLote, DocumentoLoteApi, enviarLote } from '@/services/api'
+import { mensagemErroLeitura } from '@/utils/erros'
 
 interface Envio {
   chave: number
@@ -98,19 +102,26 @@ interface Envio {
   documento: DocumentoLoteApi | null
   loteId: number | null
   erro: string | null
+  enviadoEm: number | null
 }
 
 // Mesmo limite e tipos aceitos pelo backend (src/config/upload.config.ts).
 const LIMITE_MB = 50
 const TIPOS = ['application/pdf', 'image/jpeg', 'image/png']
+// Passado esse tempo na fila/lendo sem resposta, a pessoa pode reprocessar.
+const DEMORA_MS = 3 * 60 * 1000
+
+// Fora do componente: ao sair da tela e voltar, a lista e o acompanhamento continuam.
+const envios = reactive<Envio[]>([])
+let proximaChave = 0
 
 export default defineComponent({
   name: 'UploadView',
   components: { ListChecks, Plus, UploadCloud, PageHeader, BotaoReprocessar },
   setup() {
-    const envios = reactive<Envio[]>([])
     const arrastando = ref(false)
-    let proximaChave = 0
+    const agora = ref(Date.now())
+    let consultando = false
 
     function tamanhoLegivel(bytes: number) {
       return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`
@@ -126,6 +137,7 @@ export default defineComponent({
         lote.documentos.forEach((documento, i) => {
           grupo[i].documento = documento
           grupo[i].loteId = lote.id
+          grupo[i].enviadoEm = Date.now()
           grupo[i].estado = 'enviado'
         })
       } catch (e) {
@@ -136,32 +148,72 @@ export default defineComponent({
       }
     }
 
+    const EM_ANDAMENTO = ['ENVIADA', 'LENDO']
+
     // A IA lê depois do envio: enquanto houver arquivo na fila ou sendo lido, pergunta de novo.
     async function atualizarSituacao() {
-      const emLeitura = envios.filter(e => e.documento?.status === 'ENVIADA' || e.documento?.status === 'LENDO')
-      const lotes = Array.from(new Set(emLeitura.map(e => e.loteId)))
+      if (consultando) return
+      consultando = true
+      try {
+        const emLeitura = envios.filter(e => e.documento?.status && EM_ANDAMENTO.includes(e.documento.status))
+        const lotes = Array.from(new Set(emLeitura.map(e => e.loteId)))
 
-      for (const loteId of lotes) {
-        if (loteId === null) continue
-        try {
-          const lote = await buscarLote(loteId)
-          lote.documentos.forEach(documento => {
-            const envio = envios.find(e => e.documento?.id === documento.id)
-            if (!envio) return
-            // Enquanto o backend não manda a hora da falha, usamos a hora em que a tela viu a falha.
-            const falhouEm = documento.status === 'FALHA_LEITURA'
-              ? documento.falhouEm ?? new Date().toISOString()
-              : null
-            envio.documento = { ...documento, falhouEm }
-          })
-        } catch {
-          // Sem conexão agora: tenta de novo na próxima rodada.
+        for (const loteId of lotes) {
+          if (loteId === null) continue
+          try {
+            const lote = await buscarLote(loteId)
+            lote.documentos.forEach(documento => {
+              const envio = envios.find(e => e.documento?.id === documento.id)
+              if (!envio) return
+              // Enquanto o backend não manda a hora da falha, usamos a hora em que a tela viu a falha.
+              // Guarda a primeira hora vista: se o polling continuar, a espera de reprocessar não reinicia.
+              const leituraFalhou = documento.status === 'FALHA_LEITURA' ||
+                (!!documento.erro && !!documento.status && EM_ANDAMENTO.includes(documento.status))
+              const falhouEm = leituraFalhou
+                ? documento.falhouEm ?? envio.documento?.falhouEm ?? new Date().toISOString()
+                : null
+              envio.documento = { ...documento, falhouEm }
+            })
+          } catch {
+            // Sem conexão agora: tenta de novo na próxima rodada.
+          }
         }
+      } finally {
+        consultando = false
       }
     }
 
+    // Falhou de verdade, ou o backend registrou erro mas ainda não mudou o status.
+    function falhou(envio: Envio): boolean {
+      const doc = envio.documento
+      if (!doc) return false
+      if (doc.status === 'FALHA_LEITURA') return true
+      return !!doc.erro && !!doc.status && EM_ANDAMENTO.includes(doc.status)
+    }
+
+    function demorando(envio: Envio): boolean {
+      const doc = envio.documento
+      if (!doc || !doc.status || !EM_ANDAMENTO.includes(doc.status) || falhou(envio) || !envio.enviadoEm) return false
+      return agora.value - envio.enviadoEm > DEMORA_MS
+    }
+
+    function podeReprocessar(envio: Envio): boolean {
+      return falhou(envio) || demorando(envio)
+    }
+
+    // Selo da situação; nunca quebra se o backend mandar um status desconhecido.
+    function situacao(envio: Envio): { rotulo: string; classe: string } | null {
+      if (falhou(envio)) return STATUS_FICHA.FALHA_LEITURA
+      if (demorando(envio)) return { rotulo: 'Leitura demorando', classe: 'selo--alerta' }
+      const status = envio.documento?.status
+      return status ? STATUS_FICHA[status] ?? null : null
+    }
+
     let relogio: number | undefined
-    onMounted(() => { relogio = window.setInterval(atualizarSituacao, 4000) })
+    onMounted(() => {
+      atualizarSituacao()
+      relogio = window.setInterval(() => { agora.value = Date.now(); atualizarSituacao() }, 4000)
+    })
     onUnmounted(() => window.clearInterval(relogio))
 
     function aoReprocessar(envio: Envio) {
@@ -169,10 +221,11 @@ export default defineComponent({
       envio.documento.status = 'ENVIADA'
       envio.documento.erro = null
       envio.documento.falhouEm = null
+      envio.enviadoEm = Date.now()
     }
 
     async function adicionar(arquivos: FileList | null | undefined) {
-      const novos: Envio[] = Array.from(arquivos ?? []).map(arquivo => {
+      const novos: Envio[] = Array.from(arquivos ?? []).map((arquivo): Envio => {
         let erro: string | null = null
         if (!TIPOS.includes(arquivo.type)) erro = 'Tipo não aceito. Envie PDF, JPG ou PNG.'
         else if (arquivo.size > LIMITE_MB * 1024 * 1024) erro = `Arquivo maior que ${LIMITE_MB} MB.`
@@ -184,7 +237,8 @@ export default defineComponent({
           estado: erro ? 'erro' : 'enviando',
           documento: null,
           loteId: null,
-          erro
+          erro,
+          enviadoEm: null
         }
       })
       envios.unshift(...novos)
@@ -199,30 +253,14 @@ export default defineComponent({
       entrada.value = ''
     }
 
-    function erroDeLeitura(erro: string): string {
-      if (erro.includes('429') || /quota/i.test(erro)) {
-        return 'A cota diária da IA acabou. Tente reprocessar amanhã.'
-      }
-      if (erro.includes('503') || /high demand|overloaded/i.test(erro)) {
-        return 'A IA está sobrecarregada no momento. Tente reprocessar em alguns minutos.'
-      }
-      if (/aborted|timeout|tempo/i.test(erro)) {
-        return 'A leitura demorou demais e foi interrompida. Tente reprocessar.'
-      }
-      if (/JSON/.test(erro)) {
-        return 'A IA devolveu uma resposta incompleta. Tente reprocessar.'
-      }
-      return 'Não foi possível ler esta ficha. Tente reprocessar.'
-    }
-
     function aoSoltar(evento: DragEvent) {
       arrastando.value = false
       adicionar(evento.dataTransfer?.files)
     }
 
     return {
-      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, aoReprocessar, erroDeLeitura,
-      status: STATUS_FICHA, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
+      envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, aoReprocessar, erroDeLeitura: mensagemErroLeitura,
+      situacao, demorando, podeReprocessar, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
     }
   }
 })

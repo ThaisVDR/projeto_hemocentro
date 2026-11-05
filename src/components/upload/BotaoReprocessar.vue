@@ -8,7 +8,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { computed, defineComponent, onMounted, onUnmounted, PropType, ref } from 'vue'
 import { avisar } from '@/composables/useAvisos'
 import { reprocessarDocumento } from '@/services/api'
 
@@ -20,7 +20,7 @@ export default defineComponent({
   props: {
     documentoId: { type: Number, required: true },
     // Hora em que a leitura falhou (ISO). Sem ela, o botão fica liberado.
-    falhouEm: { type: String, default: null }
+    falhouEm: { type: String as PropType<string | null>, default: null }
   },
   emits: ['reprocessado'],
   setup(props, { emit }) {

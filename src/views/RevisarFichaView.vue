@@ -401,6 +401,7 @@ import { estaAutenticado, tokenAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import { formatarData } from '@/utils/formatacao'
 import { avisar, fecharErros } from '@/composables/useAvisos'
+import { mensagemErroLeitura } from '@/utils/erros'
 import CampoColaborador from '@/components/revisao/CampoColaborador.vue'
 import CampoCidade from '@/components/revisao/CampoCidade.vue'
 import LegendaEstados from '@/components/revisao/LegendaEstados.vue'
@@ -524,7 +525,7 @@ export default defineComponent({
         carregarSemelhantes()
         const nomeArquivo = detalhe.documento.nomeOriginal
         trocarArquivo({ nome: nomeArquivo, tipo: tipoPeloNome(nomeArquivo), url: urlArquivoDocumento(detalhe.documento.id) })
-        if (detalhe.erroLeitura) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${detalhe.erroLeitura}` }
+        if (detalhe.erroLeitura) mensagem.value = { tipo: 'alerta', texto: `Leitura da IA: ${mensagemErroLeitura(detalhe.erroLeitura)}` }
       } catch (erro) {
         mensagem.value = { tipo: 'alerta', texto: (erro as Error).message }
       } finally {
@@ -774,7 +775,8 @@ export default defineComponent({
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
       fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao, estaAutenticado,
       titulo, subtitulo, statusFicha, dadosResumo, indiceSecoes, irParaSecao,
-      selecionarArquivo, eventos, confirmar, marcarEditado, alterarFenotipo, adicionarTransfusao, removerTransfusao,
+      selecionarArquivo, eventos, confirmar, desfazerConferencia, marcarEditado, alterarFenotipo,
+      adicionarTransfusao, removerTransfusao,
       adicionarAnticorpo, removerAnticorpo, aprovar, salvarRascunho, sinalizarPendencia, recusar, recusando, confirmarRecusa,
       pendenciando, confirmarPendencia, assumindo, confirmarAssumir, semelhantes, pacienteEscolhido, falta, formatarData,
       antigenos: ANTIGENOS_FICHA_FENOTIPAGEM,
