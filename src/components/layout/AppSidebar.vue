@@ -20,6 +20,17 @@
         <component :is="item.icone" :size="16" />
         <span>{{ item.rotulo }}</span>
       </router-link>
+
+      <!-- Link exclusivo do Gestor ajustado e estilizado -->
+      <router-link
+        v-if="ehGestor"
+        :to="{ name: 'usuarios' }"
+        class="menu__item"
+        active-class="menu__item--ativo"
+      >
+        <Users :size="16" />
+        <span>Usuários</span>
+      </router-link>
     </nav>
 
     <div class="menu__rodape">
@@ -30,6 +41,7 @@
 
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
+import { ehGestor, Permissao, temPermissao } from '@/services/sessao'
 import {
   CircleAlert,
   CircleHelp,
@@ -39,13 +51,13 @@ import {
   History,
   LayoutGrid,
   ListChecks,
-  Upload
+  Upload,
+  Users
 } from 'lucide-vue-next'
-import { Permissao, temPermissao } from '@/services/sessao'
 
 export default defineComponent({
   name: 'AppSidebar',
-  components: { CircleHelp, Droplet },
+  components: { CircleHelp, Droplet, Users },
   setup() {
     const todos: { rota: string; rotulo: string; icone: unknown; permissao: Permissao }[] = [
       { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid, permissao: 'VISUALIZAR_DASHBOARD' },
@@ -56,9 +68,11 @@ export default defineComponent({
       { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart, permissao: 'CONSULTAR_PRONTUARIOS' },
       { rota: 'auditoria', rotulo: 'Auditoria', icone: History, permissao: 'CONSULTAR_AUDITORIA' }
     ]
+
     // Só mostra o que a pessoa pode abrir (o gestor vê tudo).
     const itens = computed(() => todos.filter((item) => temPermissao(item.permissao)))
-    return { itens }
+
+    return { itens, ehGestor }
   }
 })
 </script>

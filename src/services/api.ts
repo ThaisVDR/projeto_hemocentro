@@ -7,13 +7,11 @@ import { ehErroTecnico, MENSAGEM_ERRO_GENERICA } from '@/utils/erros'
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
 
 export class ErroApi extends Error {
-  // detalhe = texto técnico original do servidor; fica só para o console, nunca para a tela.
   constructor(mensagem: string, readonly status?: number, readonly detalhe?: string) {
     super(mensagem)
   }
 }
-// Toda chamada leva o cookie da sessão (credentials: 'include').
-// POST, PATCH e DELETE levam também o token CSRF que o login devolveu.
+
 async function chamar(caminho: string, opcoes: RequestInit = {}): Promise<Response> {
   const headers = new Headers(opcoes.headers)
   const metodo = (opcoes.method ?? 'GET').toUpperCase()
@@ -26,7 +24,6 @@ async function chamar(caminho: string, opcoes: RequestInit = {}): Promise<Respon
     throw new ErroApi(`Não foi possível conectar ao servidor (${API_URL}). Verifique se o backend está rodando.`)
   }
 
-  // Sessão expirou ou foi encerrada no servidor: limpa a tela e volta para o login.
   if (resposta.status === 401 && !caminho.startsWith('/auth/')) {
     encerrarSessao()
     const voltar = encodeURIComponent(location.pathname + location.search)
@@ -59,7 +56,8 @@ function enviarJson<T>(caminho: string, metodo: string, dados: unknown): Promise
   })
 }
 
-// O que a IA leu (FichaExtraida do backend). Datas em AAAA-MM-DD; null = vazio ou ilegível.
+// ---------- Tipos da Ficha ----------
+
 export interface FichaExtraidaApi {
   paciente: {
     nome: string | null
@@ -101,12 +99,11 @@ export interface FichaExtraidaApi {
     amostra: string | null
     metodologia: string | null
     responsavel: string | null
-     fenotipagem: { antigeno: string; resultado: string }[]
+    fenotipagem: { antigeno: string; resultado: string }[]
   }[]
   kits: KitExtraidoApi[]
 }
 
-// Folha Bio-Rad lida pela IA (páginas 2 e 3). "celula" é o número da hemácia (DiaCell: 1 e 2; DiaPanel: 1 a 11).
 export interface KitExtraidoApi {
   tipo: 'DIACELL' | 'DIAPANEL' | null
   dataPesquisa: string | null
@@ -125,7 +122,6 @@ export interface FichaDetalheApi {
   documento: { id: number; nomeOriginal: string; totalPaginas: number | null }
   revisor: { id: number; nome: string } | null
   dados: FichaExtraidaApi | null
-  // Última pendência sinalizada (motivo, quem e quando). Só vem do backend que já tem esse campo.
   pendencia?: PendenciaApi | null
 }
 
@@ -144,7 +140,7 @@ export interface FichaResumoApi {
   enviadaPor: string | null
 }
 
-// ---------- Rotas ----------
+// ---------- Rotas de Fichas ----------
 
 export function listarFichas(status?: StatusFicha): Promise<FichaResumoApi[]> {
   const filtro = status ? `?status=${status}` : ''
@@ -207,7 +203,6 @@ export interface AprovacaoApi {
   avisos: string[]
 }
 
-// Sem pacienteId, o backend cria um paciente novo; com ele, liga a ficha a esse paciente.
 export function aprovarFicha(id: string, pacienteId: string | null = null): Promise<AprovacaoApi> {
   const corpo = pacienteId ? { pacienteId } : {}
   return enviarJson<AprovacaoApi>(`/fichas/${encodeURIComponent(id)}/aprovar`, 'POST', corpo)
@@ -254,7 +249,6 @@ export function buscarLote(id: number): Promise<{ documentos: DocumentoLoteApi[]
 export function reprocessarDocumento(id: number): Promise<unknown> {
   return requisitar(`/documentos/${id}/reprocessar`, { method: 'POST' })
 }
-
 
 // ---------- Fila de revisão ----------
 
@@ -325,9 +319,6 @@ export function buscarCidades(busca: string): Promise<CidadeApi[]> {
 }
 
 // ---------- Autenticação ----------
-// POST /auth/login → cria a sessão (cookie) e devolve o usuário e o token CSRF
-// GET /auth/sessao → quem está logado (se o cookie ainda vale)
-// POST /auth/logout, /auth/esqueci-senha, /auth/redefinir-senha
 
 export function entrar(dados: { email: string; senha: string }): Promise<Sessao> {
   return enviarJson<Sessao>('/auth/login', 'POST', { email: dados.email.trim(), senha: dados.senha })
@@ -341,20 +332,6 @@ export async function sair(): Promise<void> {
   await chamar('/auth/logout', { method: 'POST' })
 }
 
-export async function cadastrar(dados: { nome: string; email: string; senha: string }): Promise<void> {
-  try {
-    await enviarJson<unknown>('/usuarios', 'POST', {
-      nome: dados.nome.trim(),
-      email: dados.email.trim()
-    })
-  } catch (e) {
-    if (e instanceof ErroApi && e.status === 409) {
-      throw new ErroApi('Este e-mail já está cadastrado.', 409)
-    }
-    throw e
-  }
-}
-
 export async function solicitarRedefinicaoSenha(email: string): Promise<void> {
   await enviarJson<unknown>('/auth/esqueci-senha', 'POST', { email: email.trim() })
 }
@@ -364,20 +341,16 @@ export async function redefinirSenha(token: string, senha: string): Promise<void
 }
 
 // ---------- Pacientes ----------
-// Rotas do backend usadas aqui (todas somente leitura):
-//   GET /pacientes?nome=&dataNascimento=&nomeMae=&prontuario=&pagina=&limite=  → busca (lista paginada)
-//   GET /pacientes/:id/ficha-completa                                          → dados da página do paciente
 
-// Cada item da busca (GET /pacientes). Não traz raça nem ABO/Rh: isso só vem na ficha completa.
 export interface PacienteResumoApi {
-  id: string;
-  nome: string;
-  dataNascimento?: string;
-  nomeMae?: string;
-  prontuario?: string;
-  fichasValidadas: number;
-  racaCor?: string;
-  aboRh?: string;
+  id: string
+  nome: string
+  dataNascimento?: string
+  nomeMae?: string
+  prontuario?: string
+  fichasValidadas: number
+  racaCor?: string
+  aboRh?: string
 }
 
 export interface FiltrosPaciente {
@@ -398,22 +371,13 @@ export function buscarPacientes(filtros: FiltrosPaciente): Promise<ListaPaginada
   return requisitar<ListaPaginadaApi<PacienteResumoApi>>(`/pacientes?${parametros.toString()}`)
 }
 
-
-//   GET /pacientes/:id/historico → fichas validadas e documentos de origem
 export interface HistoricoItemApi {
   ficha: { id: number; codigo: string }
   dataAtendimento: string | null
-  documento: {
-    id: number
-    nomeOriginal: string
-    totalPaginas: number | null
-    loteCodigo: string
-    url: string
-  }
+  documento: { id: number; nomeOriginal: string; totalPaginas: number | null; loteCodigo: string; url: string }
   validacao: { validadoPor: string | null; validadoEm: string | null }
 }
 
-// Formato que as telas do Prontuário usam (os componentes não mudam).
 export interface AnticorpoPacienteApi {
   data: string | null
   especificidade: string
@@ -439,9 +403,6 @@ export interface PacienteDetalheApi {
   ultimaValidacao: { em: string; por: string } | null
 }
 
-// Resposta de GET /pacientes/:id/ficha-completa (somente leitura, só registros validados).
-// O Prontuário aproveita uma parte (buscarPaciente); a tela Ficha completa usa tudo.
-// Datas em AAAA-MM-DD; enums chegam como no banco (O_POSITIVO, NEGATIVO...) e são traduzidos em domain/traducao.ts.
 export interface OrigemApi {
   fichaCodigo: string | null
   pagina: number | null
@@ -548,14 +509,6 @@ export function buscarFichaCompleta(id: string): Promise<FichaCompletaApi> {
   return requisitar<FichaCompletaApi>(`/pacientes/${encodeURIComponent(id)}/ficha-completa`)
 }
 
-// Uma linha por ficha validada, da mais recente para a mais antiga (GET /pacientes/:id/historico).
-export interface HistoricoItemApi {
-  ficha: { id: number; codigo: string }
-  dataAtendimento: string | null
-  documento: { id: number; nomeOriginal: string; totalPaginas: number | null; loteCodigo: string; url: string }
-  validacao: { validadoPor: string | null; validadoEm: string | null }
-}
-
 export function buscarHistorico(id: string): Promise<HistoricoItemApi[]> {
   return requisitar<HistoricoItemApi[]>(`/pacientes/${encodeURIComponent(id)}/historico`)
 }
@@ -564,10 +517,8 @@ export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
   const ficha = await requisitar<FichaCompletaApi>(`/pacientes/${encodeURIComponent(id)}/ficha-completa`)
   const { paciente: p, ultimaValidacao, pesquisasImunoHematologicas: pesquisas } = ficha
 
-  // Para cada antígeno vale o resultado da pesquisa mais recente; "0" = negativo.
   const antigenosVistos = new Set<string>()
   const antigenosNegativos: string[] = []
-  // "Anti-c" citado em várias pesquisas aparece uma vez só (com a data da mais recente).
   const anticorpos: AnticorpoPacienteApi[] = []
 
   for (const pesquisa of pesquisas) {
@@ -605,15 +556,15 @@ export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
   }
 }
 
+// ---------- Dashboard ----------
+
 export interface DashboardApi {
   periodo: { de: string; ate: string }
-  // digitalizadas e validadas contam o período; emRevisao e lendo são a situação de agora.
   fichas: { digitalizadas: number; validadas: number; emRevisao: number; lendo: number }
   evolucaoSemanal: { semana: string; fichas: number }[]
   qualidadeCadastro: { validadas: number; completas: number; percentual: number }
 }
 
-// de/ate em AAAA-MM-DD; sem eles o backend usa as últimas 6 semanas.
 export function buscarDashboard(periodo: { de?: string; ate?: string } = {}): Promise<DashboardApi> {
   const parametros = new URLSearchParams()
   if (periodo.de) parametros.set('de', periodo.de)
@@ -622,11 +573,7 @@ export function buscarDashboard(periodo: { de?: string; ate?: string } = {}): Pr
   return requisitar<DashboardApi>(`/dashboard${consulta ? `?${consulta}` : ''}`)
 }
 
-// As fichas que mais pedem atenção primeiro (com alerta e, entre elas, as que esperam há mais tempo).
-// `contadores` vem de todas as fichas, não só das 3 listadas: serve para detalhar os cartões.
 // ---------- Leituras com problema ----------
-// Fichas que ainda não chegaram à revisão: na fila da IA, sendo lidas ou com falha.
-// GET /fichas?status=ENVIADA,LENDO,FALHA_LEITURA (mais recentes primeiro).
 
 export const STATUS_LEITURA: StatusFicha[] = ['ENVIADA', 'LENDO', 'FALHA_LEITURA']
 
@@ -651,32 +598,29 @@ export function listarPrioridadesRevisao(limite = 3): Promise<FilaRevisaoApi> {
   return requisitar<FilaRevisaoApi>(`/fichas?${parametros.toString()}`)
 }
 
-// Mais recentes primeiro.
 export function listarEventosRecentes(limite = 3): Promise<ListaPaginadaApi<EventoAuditoriaApi>> {
   return requisitar<ListaPaginadaApi<EventoAuditoriaApi>>(`/auditoria/eventos?limite=${limite}`)
 }
 
 // ---------- Auditoria ----------
-// Rotas do backend (somente leitura):
-//   GET /auditoria/eventos?busca=&de=&ate=&tipo=&usuarioId=&pagina=&limite=  → lista + contadores
-//   GET /auditoria/eventos/:id                                                → detalhe do evento
-//   GET /auditoria/eventos/exportar?(mesmos filtros)                          → trilha-auditoria.xlsx
 
 export interface ListaEventosAuditoriaApi extends ListaPaginadaApi<EventoAuditoriaApi> {
   contadores: { eventos: number; edicoes: number; validacoes: number }
 }
+
 export interface EventoAuditoriaApi {
   id: number
   codigo: string
   tipo: string
   ocorridoEm: string
-  usuario: { id: number; nome: string } | null // null = o próprio sistema (fila da IA)
+  usuario: { id: number; nome: string } | null
   ficha: { id: number; codigo: string } | null
   lote: { id: number; codigo: string } | null
   paciente: { id: string; nome: string } | null
   campo: string | null
   pagina: number | null
 }
+
 export interface EventoAuditoriaDetalheApi {
   id: number
   codigo: string
@@ -690,15 +634,15 @@ export interface EventoAuditoriaDetalheApi {
   loteCodigo: string | null
   campo: string | null
   pagina: number | null
-  valorAnterior: string | null // sugestão da extração
-  valorPosterior: string | null // correção humana
+  valorAnterior: string | null
+  valorPosterior: string | null
   justificativa: string | null
   documento: { id: number; nomeOriginal: string; url: string } | null
 }
 
 export interface FiltrosAuditoria {
   busca: string
-  de: string // AAAA-MM-DD ou ''
+  de: string
   ate: string
   tipo: TipoEventoApi | ''
   usuarioId: number | null
@@ -727,11 +671,6 @@ export function buscarEventoAuditoria(id: number): Promise<EventoAuditoriaDetalh
   return requisitar<EventoAuditoriaDetalheApi>(`/auditoria/eventos/${id}`)
 }
 
-export function listarUsuarios(): Promise<{ id: number; nome: string; email: string }[]> {
-  return requisitar('/usuarios')
-}
-
-// A exportação devolve um arquivo (não JSON): baixamos como Blob e o componente dispara o download.
 export async function exportarTrilhaAuditoria(filtros: FiltrosAuditoria): Promise<{ blob: Blob; nome: string }> {
   const resposta = await chamar(`/auditoria/eventos/exportar?${parametrosAuditoria(filtros).toString()}`)
 
@@ -748,4 +687,55 @@ export async function exportarTrilhaAuditoria(filtros: FiltrosAuditoria): Promis
 
   const nome = resposta.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/)?.[1] ?? 'trilha-auditoria.xlsx'
   return { blob: await resposta.blob(), nome }
+}
+
+// ---------- Tipos de Usuários e Permissões (Gestor) ----------
+
+// Adicione junto às outras interfaces
+export type PermissaoUsuario =
+  | 'VISUALIZAR_DASHBOARD'
+  | 'ENVIAR_DOCUMENTOS'
+  | 'REVISAR_FICHAS'
+  | 'CONSULTAR_PRONTUARIOS'
+  | 'CONSULTAR_AUDITORIA'
+  | 'EXPORTAR_AUDITORIA'
+  | 'GERENCIAR_USUARIOS'
+
+export interface UsuarioGerenciamentoApi {
+  id: number
+  nome: string
+  email: string
+  ativo: boolean
+  permissoes: PermissaoUsuario[]
+  criadoEm?: string
+}
+
+export interface CriarUsuarioPayload {
+  nome: string
+  email: string
+  permissoes: PermissaoUsuario[]
+}
+
+// Remova a função: export async function cadastrar(dados: { nome: string...
+// E adicione as novas funções de gestão:
+
+export function listarUsuarios(ativo?: boolean): Promise<UsuarioGerenciamentoApi[]> {
+  const query = ativo !== undefined ? `?ativo=${ativo}` : ''
+  return requisitar<UsuarioGerenciamentoApi[]>(`/usuarios${query}`)
+}
+
+export function criarUsuario(dados: CriarUsuarioPayload): Promise<UsuarioGerenciamentoApi> {
+  return enviarJson<UsuarioGerenciamentoApi>('/usuarios', 'POST', dados)
+}
+
+export function atualizarUsuario(id: number, dados: Partial<CriarUsuarioPayload>): Promise<UsuarioGerenciamentoApi> {
+  return enviarJson<UsuarioGerenciamentoApi>(`/usuarios/${id}`, 'PATCH', dados)
+}
+
+export function inativarUsuario(id: number): Promise<void> {
+  return requisitar<void>(`/usuarios/${id}/inativar`, { method: 'POST' })
+}
+
+export function reativarUsuario(id: number): Promise<void> {
+  return requisitar<void>(`/usuarios/${id}/reativar`, { method: 'POST' })
 }
