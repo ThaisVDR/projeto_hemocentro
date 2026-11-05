@@ -66,7 +66,6 @@ export default defineComponent({
       { rota: 'leituras', rotulo: 'Leituras com problema', icone: CircleAlert },
       { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks },
       { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart },
-      // Auditoria é a única rota desta lista que é exclusiva do gestor
       { rota: 'auditoria', rotulo: 'Auditoria', icone: History, requerGestor: true } 
     ]
 
