@@ -1,6 +1,6 @@
-import { Reacao, extrairAnticorpos, interpretarReacao } from '@/domain/fenotipo'
+import { Reacao, interpretarReacao } from '@/domain/fenotipo'
 import { csrfAtual, encerrarSessao, Sessao } from '@/services/sessao'
-import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
+import { CLASSES_ANTICORPO, ClasseAnticorpo, MotivoRecusa, StatusFicha } from '@/domain/revisao'
 import { TipoEventoApi } from '@/domain/auditoria'
 import { ehErroTecnico, MENSAGEM_ERRO_GENERICA } from '@/utils/erros'
 
@@ -102,6 +102,8 @@ export interface FichaExtraidaApi {
     metodologia: string | null
     responsavel: string | null
      fenotipagem: { antigeno: string; resultado: string }[]
+    // Um por linha, com data e classe. Fichas antigas podem vir sem a lista: aí vale o texto da especificidade.
+    anticorpos?: AnticorpoApi[]
   }[]
   kits: KitExtraidoApi[]
 }
@@ -115,6 +117,12 @@ export interface KitExtraidoApi {
   autocontroleEnzima: string | null
   autocontroleFrio: string | null
   resultados: { celula: number; lissCoombs: string | null; enzima: string | null; frio: string | null }[]
+}
+
+export interface AnticorpoApi {
+  especificidade: string
+  data: string | null
+  classe: ClasseAnticorpo | null
 }
 
 export interface FichaDetalheApi {
@@ -479,6 +487,7 @@ export interface PesquisaImunoApi {
   amostra: string | null
   metodologia: string | null
   fenotipagem: { antigeno: string; resultado: string }[]
+  anticorpos?: AnticorpoApi[]
   responsavel: string | null
   origem: OrigemApi
 }
@@ -576,9 +585,10 @@ export async function buscarPaciente(id: string): Promise<PacienteDetalheApi> {
       antigenosVistos.add(antigeno)
       if (interpretarReacao(resultado as Reacao) === 'negativo') antigenosNegativos.push(antigeno)
     }
-    for (const especificidade of extrairAnticorpos(pesquisa.especificidade)) {
-      if (!anticorpos.some((a) => a.especificidade.toLowerCase() === especificidade.toLowerCase())) {
-        anticorpos.push({ data: pesquisa.dataPesquisa, especificidade, classe: null })
+    for (const anticorpo of pesquisa.anticorpos ?? []) {
+      if (!anticorpos.some((a) => a.especificidade.toLowerCase() === anticorpo.especificidade.toLowerCase())) {
+        const classe = CLASSES_ANTICORPO.find((c) => c.valor === anticorpo.classe)?.rotulo ?? null
+        anticorpos.push({ data: anticorpo.data, especificidade: anticorpo.especificidade, classe })
       }
     }
   }
