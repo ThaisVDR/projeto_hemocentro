@@ -3,14 +3,14 @@
     <div v-if="!tokenValido" class="form">
         <header class="form__cabecalho">
             <h1>Link inválido ou expirado</h1>
-            <p>O token de segurança não foi encontrado ou é inválido.</p>
+            <p>O link vale por 30 minutos e só pode ser usado uma vez.</p>
         </header>
         <p class="form__aviso" role="alert">
             Solicite um novo link para continuar com a alteração de sua senha.
         </p>
         <nav class="form__links">
-            <router-link class="form__link" :to="{ name: 'esqueci-senha' }">
-                Solicitar novo link
+            <router-link class="botao botao--primario form__botao" :to="{ name: 'esqueci-senha' }">
+                Pedir um novo link
             </router-link>
         </nav>
     </div>
@@ -21,7 +21,7 @@
             <h1>Senha redefinida!</h1>
         </header>
         <p class="form__sucesso" role="status">
-            Sua senha foi alterada com sucesso. Você já pode acessar o sistema com a nova credencial.
+            Sua senha foi salva. Já pode entrar no sistema com ela.
         </p>
         <nav class="form__links">
             <router-link class="botao botao--primario form__botao" :to="{ name: 'login' }">
@@ -34,7 +34,7 @@
     <form v-else class="form" novalidate @submit.prevent="aoEnviar">
         <header class="form__cabecalho">
             <h1>Criar nova senha</h1>
-            <p>Defina sua nova senha de acesso ao sistema.</p>
+            <p>Escolha a senha que você vai usar para entrar no sistema.</p>
         </header>
 
         <p v-if="erroGeral" class="form__aviso" role="alert">{{ erroGeral }}</p>
