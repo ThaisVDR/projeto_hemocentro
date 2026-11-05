@@ -1,19 +1,13 @@
-import { computed, ref } from 'vue'
-
-// O que o backend chama de permissão (o gestor pode tudo, sem precisar delas).
-export type Permissao =
-  | 'VISUALIZAR_DASHBOARD'
-  | 'ENVIAR_DOCUMENTOS'
-  | 'REVISAR_FICHAS'
-  | 'CONSULTAR_PRONTUARIOS'
-  | 'CONSULTAR_AUDITORIA'
+import { ref, computed } from 'vue';
+// Se a interface Usuario vier do arquivo de domínio, você pode importar assim e remover a declaração abaixo.
+// import type { Usuario } from '@/domain/usuario'; 
 
 export interface Usuario {
   id: number
   nome: string
   email: string
   perfil: 'GESTOR' | 'COLABORADOR'
-  permissoes: Permissao[]
+  // A propriedade "permissoes" foi removida daqui.
 }
 
 // A sessão de verdade fica num cookie que o JavaScript não lê (httpOnly).
@@ -44,14 +38,12 @@ export const usuarioLogado = computed(() => sessao.value?.usuario ?? null)
 export const csrfAtual = computed(() => sessao.value?.csrfToken ?? null)
 // Id de quem está logado, em texto, para comparar com o revisor da ficha.
 export const idUsuarioAtual = computed(() => (sessao.value ? String(sessao.value.usuario.id) : null))
-export const ehGestor = computed(() => sessao.value?.usuario.perfil === 'GESTOR')
 
-export function temPermissao(permissao: Permissao | undefined): boolean {
-  if (!permissao) return true
-  const usuario = sessao.value?.usuario
-  if (!usuario) return false
-  return usuario.perfil === 'GESTOR' || usuario.permissoes.includes(permissao)
-}
+// AS NOVAS VALIDAÇÕES DE PERFIL FICAM AQUI:
+export const ehGestor = computed(() => sessao.value?.usuario.perfil === 'GESTOR')
+export const ehColaborador = computed(() => sessao.value?.usuario.perfil === 'COLABORADOR')
+
+// A função "temPermissao" foi completamente removida.
 
 export function iniciarSessao(nova: Sessao): void {
   sessao.value = nova
