@@ -100,6 +100,8 @@ export interface FichaExtraidaApi {
     metodologia: string | null
     responsavel: string | null
     fenotipagem: { antigeno: string; resultado: string }[]
+     // Um por linha, com data e classe. Fichas antigas podem vir sem a lista: aí vale o texto da especificidade.
+    anticorpos?: AnticorpoApi[]
   }[]
   kits: KitExtraidoApi[]
 }
