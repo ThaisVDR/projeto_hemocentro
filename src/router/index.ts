@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { consultarSessao } from '@/services/api'
+import { ehGestor } from '@/services/sessao'
 import { estaAutenticado, iniciarSessao, Permissao, temPermissao } from '@/services/sessao'
 
 const routes: RouteRecordRaw[] = [
@@ -69,6 +70,19 @@ const routes: RouteRecordRaw[] = [
         name: 'ficha-completa',
         component: () => import('@/views/FichaCompletaView.vue'),
         meta: { titulo: 'Prontuários', permissao: 'CONSULTAR_PRONTUARIOS' }
+      },
+      {
+      path: 'usuarios', // <-- sem a barra inicial
+        name: 'usuarios',
+        component: () => import('@/views/UsuariosView.vue'),
+        meta: { titulo: 'Gestão de Usuários', permissao: 'GERENCIAR_USUARIOS' }, // <-- padronizado com as outras
+        beforeEnter: (to, from, next) => {
+          if (!ehGestor.value) {
+            next({ name: 'dashboard' }) // Redireciona não-gestores
+          } else {
+            next()
+          }
+        }
       },
       {
         path: 'auditoria',
