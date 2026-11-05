@@ -216,8 +216,18 @@
           </template>
 
           <div v-if="detalhe.justificativa" class="justificativa">
-            <span>Justificativa registrada</span>
-            <p>{{ detalhe.justificativa }}</p>
+            <template v-if="detalhe.tipo === 'LEITURA_FALHOU'">
+              <span>Motivo da falha</span>
+              <p>{{ mensagemErroLeitura(detalhe.justificativa) }}</p>
+              <details class="tecnico">
+                <summary>Ver detalhes técnicos</summary>
+                <p>{{ detalhe.justificativa }}</p>
+              </details>
+            </template>
+            <template v-else>
+              <span>Justificativa registrada</span>
+              <p>{{ detalhe.justificativa }}</p>
+            </template>
           </div>
 
           <p v-if="detalhe.tipo === 'CAMPO_EDITADO'" class="aviso">
@@ -288,6 +298,7 @@ import {
   urlArquivoDocumento
 } from '@/services/api'
 import { useAvisos } from '@/composables/useAvisos'
+import { mensagemErroLeitura } from '@/utils/erros'
 
 const FILTROS_VAZIOS = (): FiltrosAuditoria => ({ busca: '', de: '', ate: '', tipo: '', usuarioId: null })
 
@@ -448,7 +459,8 @@ export default defineComponent({
       origem,
       tipo: (t: TipoEventoApi | string) => infoDoTipo(t),
       quando: partesDataHora,
-      urlDocumento: urlArquivoDocumento
+      urlDocumento: urlArquivoDocumento,
+      mensagemErroLeitura
     }
   }
 })
@@ -776,6 +788,23 @@ export default defineComponent({
   font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.tecnico {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+}
+
+.tecnico summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tecnico p {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 11px;
 }
 
 .aviso {
