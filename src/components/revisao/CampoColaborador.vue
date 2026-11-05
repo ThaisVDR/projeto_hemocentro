@@ -20,6 +20,10 @@ import { semAcento } from '@/utils/formatacao'
 import CampoBusca from './CampoBusca.vue'
 import DialogoConfirmacao from '@/components/DialogoConfirmacao.vue'
 
+// Avisa todos os campos de responsável da tela quando alguém é cadastrado,
+// para o "+ Cadastrar" sumir também nas outras linhas com o mesmo nome.
+const cadastrosFeitos = ref(0)
+
 export default defineComponent({
   name: 'CampoColaborador',
   components: { CampoBusca, DialogoConfirmacao },
@@ -64,6 +68,10 @@ export default defineComponent({
       espera = window.setTimeout(() => procurar(termo), 300)
     }, { immediate: true })
 
+    watch(cadastrosFeitos, () => {
+      if (nomeDigitado.value.length >= 2) procurar(nomeDigitado.value)
+    })
+
     // Ao sair do campo: "marcia" vira "Márcia", igual ao cadastro.
     function aoSair() {
       emFoco.value = false
@@ -79,8 +87,12 @@ export default defineComponent({
         const novo = await cadastrarColaborador(nomeDigitado.value)
         sugestoes.value = [novo, ...sugestoes.value]
         emit('update:modelValue', novo.nome)
+        cadastrosFeitos.value++
       } catch (e) {
-        erro.value = (e as Error).message
+        // Já existe (cadastrado em outra linha ou por outra pessoa): busca de novo e usa o cadastro.
+        await procurar(nomeDigitado.value)
+        if (podeCadastrar.value) erro.value = (e as Error).message
+        else aoSair()
       } finally {
         cadastrando.value = false
       }

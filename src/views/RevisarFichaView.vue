@@ -1,5 +1,5 @@
 <template>
-  <section class="revisao">
+  <section class="revisao" :class="{ 'revisao--erros': mostrarErros }">
     <p class="revisao__trilha">
       <router-link :to="{ name: 'fila' }">Fila de revisão</router-link> / {{ arquivo ? arquivo.nome : 'Nova ficha' }}
     </p>
@@ -86,13 +86,14 @@
 
         <SecaoRevisao :numero="1" titulo="Identificação do receptor" etiqueta="Págs. 1 e 4">
           <div class="grade">
-            <CampoRevisao class="grade__inteira" :campo="ficha.identificacao.nome"
-              v-bind="eventos(ficha.identificacao.nome)" />
+            <CampoRevisao class="grade__inteira" :class="{ 'campo--erro': !ficha.identificacao.nome.valor }"
+              :campo="ficha.identificacao.nome" v-bind="eventos(ficha.identificacao.nome)" />
             <CampoRevisao :campo="ficha.identificacao.racaCor" :opcoes="opcoesRacaCor"
               v-bind="eventos(ficha.identificacao.racaCor)" />
             <CampoRevisao :campo="ficha.identificacao.aboRh" :opcoes="opcoesAboRh"
               v-bind="eventos(ficha.identificacao.aboRh)" />
-            <CampoRevisao :campo="ficha.identificacao.dataNascimento" tipo="date"
+            <CampoRevisao :class="{ 'campo--erro': !ficha.identificacao.dataNascimento.valor }"
+              :campo="ficha.identificacao.dataNascimento" tipo="date"
               v-bind="eventos(ficha.identificacao.dataNascimento)" />
             <CampoRevisao :campo="ficha.identificacao.sexo" :opcoes="opcoesSexo"
               v-bind="eventos(ficha.identificacao.sexo)" />
@@ -105,7 +106,8 @@
             <CampoRevisao :campo="ficha.identificacao.diagnostico" v-bind="eventos(ficha.identificacao.diagnostico)" />
           </div>
 
-          <div v-if="semelhantes.length && !finalizada" class="semelhante">
+          <div v-if="semelhantes.length && !finalizada" class="semelhante"
+            :class="{ 'semelhante--erro': mostrarErros && falta }">
             <Users :size="18" />
             <div>
               <strong>Possível paciente já cadastrado</strong>
@@ -290,7 +292,6 @@
               <thead>
                 <tr>
                   <th>Data</th>
-                  <th>Método</th>
                   <th>Especificidade</th>
                   <th>Classe</th>
                   <th />
@@ -300,12 +301,18 @@
                 <tr v-for="(anticorpo, indice) in ih.anticorpos" :key="indice">
                   <td>
                     <CampoData :model-value="anticorpo.data ?? undefined"
-                      @update:model-value="valor => { anticorpo.data = valor ?? undefined; marcarEditado(ih.anticorposConferencia) }" />
+                      @update:model-value="valor => { anticorpo.data = valor || null; marcarEditado(ih.anticorposConferencia) }" />
                   </td>
-                  <td><input v-model="anticorpo.metodo" @input="marcarEditado(ih.anticorposConferencia)" /></td>
                   <td><input v-model="anticorpo.especificidade" placeholder="Ex.: Anti-c"
                       @input="marcarEditado(ih.anticorposConferencia)" /></td>
-                  <td><input v-model="anticorpo.classe" @input="marcarEditado(ih.anticorposConferencia)" /></td>
+                  <td>
+                    <select v-model="anticorpo.classe" @change="marcarEditado(ih.anticorposConferencia)">
+                      <option :value="null">—</option>
+                      <option v-for="opcao in classesAnticorpo" :key="opcao.valor" :value="opcao.valor">
+                        {{ opcao.rotulo }}
+                      </option>
+                    </select>
+                  </td>
                   <td>
                     <button type="button" class="icone-botao" title="Remover linha" @click="removerAnticorpo(indice)">
                       <Trash2 :size="14" />
@@ -351,12 +358,16 @@
           </small>
           <small v-else-if="falta" class="acoes__aviso">
             Indique se a ficha é de um paciente já cadastrado (na Identificação) antes de aprovar.
+            <button type="button" class="acoes__ir" @click="mostrarOndeFalta">Mostrar onde</button>
           </small>
           <small v-else-if="conferencia.podeAprovar">
             {{ conferencia.resolvidos }} de {{ conferencia.total }} itens preenchidos ou conferidos • revise antes de
             aprovar.
           </small>
-          <small v-else>{{ conferencia.bloqueios.join(' ') }}</small>
+          <small v-else class="acoes__aviso">
+            {{ conferencia.bloqueios.join(' ') }}
+            <button type="button" class="acoes__ir" @click="mostrarOndeFalta">Mostrar onde</button>
+          </small>
         </div>
       </div>
       <div class="acoes__botoes">
@@ -369,7 +380,7 @@
         <button type="button" class="botao" :disabled="salvando || !revisaoEhMinha" @click="salvarRascunho">Salvar
           rascunho</button>
         <button type="button" class="botao botao--primario"
-          :disabled="!conferencia.podeAprovar || salvando || !revisaoEhMinha || falta" @click="aprovar">
+          :disabled="salvando || !revisaoEhMinha" @click="aprovar">
           <Check :size="14" /> Aprovar e salvar
         </button>
       </div>
@@ -384,7 +395,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
@@ -403,7 +414,8 @@ import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from 
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia, MotivoRecusa,
-  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao,
+  CLASSES_ANTICORPO
 } from '@/domain/revisao'
 import {
   aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao,
@@ -650,7 +662,7 @@ export default defineComponent({
     }
 
     function adicionarAnticorpo() {
-      ih.value.anticorpos.push({ data: null, metodo: null, especificidade: null, classe: null })
+      ih.value.anticorpos.push({ data: null, especificidade: null, classe: null })
       marcarEditado(ih.value.anticorposConferencia)
     }
 
@@ -679,8 +691,44 @@ export default defineComponent({
       }
     }
 
+    // Depois de tentar aprovar com algo faltando, os campos que bloqueiam ficam com borda vermelha.
+    const mostrarErros = ref(false)
+
+    async function mostrarOndeFalta() {
+      mostrarErros.value = true
+      await nextTick()
+      document.querySelector('.revisao--erros .campo--erro, .revisao--erros .campo--incerto, .semelhante--erro')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+
+    // PAI, prova cruzada, TAD, autocontrole e DC-Screening sem resultado são gravados como NR (não realizado),
+    // e não como vazio. A fenotipagem pode continuar vazia.
+    function preencherTestesVazios(): number {
+      let preenchidos = 0
+      ficha.transfusoes
+        .filter(linha => Object.values(linha).some(v => v !== null && v !== ''))
+        .forEach(linha => {
+          if (!linha.testesPai) { linha.testesPai = 'NAO_REALIZADO'; preenchidos++ }
+          if (!linha.provaCruzada) { linha.provaCruzada = 'NAO_REALIZADO'; preenchidos++ }
+        })
+      // Só na pesquisa que já existe: ficha sem a página 4 não ganha uma pesquisa só com NR.
+      if (indicePesquisa.value === null) return preenchidos
+      const testes = [ih.value.pai, ih.value.tad, ih.value.autocontrole, ih.value.dcScreening]
+      testes.filter(campo => !campo.valor).forEach(campo => { editarCampo(campo, 'NAO_REALIZADO'); preenchidos++ })
+      return preenchidos
+    }
+
     async function aprovar() {
       if (!fichaId.value) return
+      if (falta.value || !conferencia.value.podeAprovar) {
+        avisar('erro', falta.value
+          ? 'Indique se a ficha é de um paciente já cadastrado antes de aprovar.'
+          : conferencia.value.bloqueios.join(' '))
+        mostrarOndeFalta()
+        return
+      }
+      const preenchidos = preencherTestesVazios()
+      if (preenchidos > 0) avisar('info', `${preenchidos} teste(s) sem resultado gravado(s) como NR — não realizado.`)
       salvando.value = true
       try {
         // O backend aprova o que está gravado nele: primeiro salva as correções pendentes.
@@ -794,6 +842,7 @@ export default defineComponent({
     }
 
     return {
+      mostrarErros, mostrarOndeFalta,
       pendencia, pendenciaVisivel, formatarDataHora,
       ficha, ih, pagina, mensagem, arquivo, carregando, salvando, finalizada, conferencia, percentual,
       fichaId, revisor, revisaoEhMinha, comecarRevisao, tomarRevisao, estaAutenticado,
@@ -806,6 +855,7 @@ export default defineComponent({
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
       opcoesTeste: RESULTADOS_TESTE,
+      classesAnticorpo: CLASSES_ANTICORPO,
       opcoesRacaCor: OPCOES_RACA,
       opcoesAboRh: OPCOES_ABO_RH,
       opcoesGrupo: ['A', 'B', 'AB', 'O'].map(g => ({ valor: g, rotulo: g })),
@@ -825,6 +875,37 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Depois de tentar aprovar: borda vermelha no que bloqueia a aprovação. */
+.revisao--erros :deep(.campo--erro input),
+.revisao--erros :deep(.campo--erro select),
+.revisao--erros :deep(.campo--incerto input),
+.revisao--erros :deep(.campo--incerto select) {
+  border-color: #c62828;
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15);
+}
+
+.revisao--erros :deep(.campo--erro .campo__nota)::after {
+  content: ' • obrigatório para aprovar';
+  color: #c62828;
+}
+
+.semelhante--erro {
+  outline: 2px solid #c62828;
+  outline-offset: 2px;
+}
+
+.acoes__ir {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--cor-primaria);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .pendencia {
