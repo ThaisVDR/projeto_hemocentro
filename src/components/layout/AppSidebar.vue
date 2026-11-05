@@ -31,6 +31,7 @@
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
 import {
+  CircleAlert,
   CircleHelp,
   Droplet,
   FileCheck,
@@ -49,6 +50,7 @@ export default defineComponent({
     const todos: { rota: string; rotulo: string; icone: unknown; permissao: Permissao }[] = [
       { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid, permissao: 'VISUALIZAR_DASHBOARD' },
       { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload, permissao: 'ENVIAR_DOCUMENTOS' },
+      { rota: 'leituras', rotulo: 'Leituras com problema', icone: CircleAlert, permissao: 'REVISAR_FICHAS' },
       { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks, permissao: 'REVISAR_FICHAS' },
       { rota: 'revisar', rotulo: 'Revisar ficha', icone: FileCheck, permissao: 'REVISAR_FICHAS' },
       { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart, permissao: 'CONSULTAR_PRONTUARIOS' },

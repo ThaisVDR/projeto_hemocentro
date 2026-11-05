@@ -616,6 +616,25 @@ export function buscarDashboard(periodo: { de?: string; ate?: string } = {}): Pr
 
 // As fichas que mais pedem atenção primeiro (com alerta e, entre elas, as que esperam há mais tempo).
 // `contadores` vem de todas as fichas, não só das 3 listadas: serve para detalhar os cartões.
+// ---------- Leituras com problema ----------
+// Fichas que ainda não chegaram à revisão: na fila da IA, sendo lidas ou com falha.
+// GET /fichas?status=ENVIADA,LENDO,FALHA_LEITURA (mais recentes primeiro).
+
+export const STATUS_LEITURA: StatusFicha[] = ['ENVIADA', 'LENDO', 'FALHA_LEITURA']
+
+export interface FichaLeituraApi extends FichaFilaApi {
+  documentoId: number
+  erroLeitura: string | null
+  falhouEm: string | null
+}
+
+export function listarLeituras(): Promise<ListaPaginadaApi<FichaLeituraApi> & { contadores: Record<string, number> }> {
+  const parametros = new URLSearchParams()
+  parametros.set('status', STATUS_LEITURA.join(','))
+  parametros.set('limite', '100')
+  return requisitar(`/fichas?${parametros.toString()}`)
+}
+
 export function listarPrioridadesRevisao(limite = 3): Promise<FilaRevisaoApi> {
   const parametros = new URLSearchParams()
   parametros.set('status', 'AGUARDANDO_REVISAO,EM_REVISAO,COM_PENDENCIA')

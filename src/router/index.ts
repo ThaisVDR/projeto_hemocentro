@@ -39,6 +39,12 @@ const routes: RouteRecordRaw[] = [
         meta: { titulo: 'Upload de documentos', permissao: 'ENVIAR_DOCUMENTOS' }
       },
       {
+        path: 'leituras',
+        name: 'leituras',
+        component: () => import('@/views/LeiturasView.vue'),
+        meta: { titulo: 'Leituras com problema', permissao: 'REVISAR_FICHAS' }
+      },
+      {
         path: 'fila',
         name: 'fila',
         component: () => import('@/views/FilaRevisaoView.vue'),
