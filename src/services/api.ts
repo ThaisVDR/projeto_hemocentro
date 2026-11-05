@@ -706,7 +706,6 @@ export type PermissaoUsuario =
   | 'REVISAR_FICHAS'
   | 'CONSULTAR_PRONTUARIOS'
   | 'CONSULTAR_AUDITORIA'
-  | 'EXPORTAR_AUDITORIA'
   | 'GERENCIAR_USUARIOS'
 
 export interface UsuarioGerenciamentoApi {
