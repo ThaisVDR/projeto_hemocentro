@@ -7,7 +7,7 @@
     </PageHeader>
 
     <div v-if="mensagemFeedback.texto" :class="['alerta-flutuante', mensagemFeedback.tipo]">
-          {{ mensagemFeedback.texto }}
+      {{ mensagemFeedback.texto }}
     </div>
 
     <div class="abas">
@@ -15,12 +15,21 @@
         :class="['aba', { 'aba-ativa': abaAtual === 'ativos' }]" 
         @click="abaAtual = 'ativos'"
       >
+        <!-- Ícone Lucide: User Check -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icone-aba">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>
+        </svg>
         Ativos ({{ usuariosAtivos.length }})
       </button>
+
       <button 
         :class="['aba', { 'aba-ativa': abaAtual === 'inativos' }]" 
         @click="abaAtual = 'inativos'"
       >
+        <!-- Ícone Lucide: User X (ou User Lock) -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icone-aba">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="22" y2="13"/><line x1="22" y1="8" x2="17" y2="13"/>
+        </svg>
         Inativos ({{ usuariosInativos.length }})
       </button>
     </div>
@@ -157,7 +166,6 @@ const permissoesDisponiveis: { valor: PermissaoUsuario, rotulo: string }[] = [
   { valor: 'REVISAR_FICHAS', rotulo: 'Revisar Fichas e Prontuários' },
   { valor: 'CONSULTAR_PRONTUARIOS', rotulo: 'Consultar Prontuários' },
   { valor: 'CONSULTAR_AUDITORIA', rotulo: 'Acessar Trilha de Auditoria' },
-  { valor: 'EXPORTAR_AUDITORIA', rotulo: 'Exportar Relatórios' },
   { valor: 'GERENCIAR_USUARIOS', rotulo: 'Gestão de Usuários (Gestor)' }
 ]
 
@@ -201,7 +209,7 @@ async function salvarUsuario() {
       nome: form.value.nome.trim(),
       email: form.value.email.trim(),
       permissoes: form.value.permissoes,
-      senha: 'Hemocentro@2026' 
+      senha: 'Hemocentro@2026' // Senha provisória que cumpre os requisitos de segurança
     }
     
     await criarUsuario(payload as any)
@@ -210,9 +218,10 @@ async function salvarUsuario() {
     mostrarAviso('Utilizador registado com sucesso! A palavra-passe provisória é Hemocentro@2026.', 'sucesso')
     await carregarTodos()
   } catch (e: any) {
+    // Se o backend retornar um erro detalhado de validação, exibe-o no modal
     erroModal.value = e instanceof ErroApi 
       ? e.message 
-      : (e?.message || 'Erro desconhecido ao registar o utilizador.')
+      : (e?.message || 'Erro ao registar o utilizador.')
   } finally {
     salvando.value = false
   }
@@ -240,7 +249,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.usuarios-view {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
+/* Alerta Flutuante */
 .alerta-flutuante {
   padding: 12px 20px;
   border-radius: 6px;
@@ -258,13 +273,8 @@ onMounted(() => {
   color: #dc2626;
   border: 1px solid #fecaca;
 }
-.usuarios-view {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
 
-/* Abas */
+/* Abas com Ícones */
 .abas {
   display: flex;
   gap: 16px;
@@ -272,6 +282,9 @@ onMounted(() => {
   border-bottom: 1px solid #e0e0e0;
 }
 .aba {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 16px;
   background: transparent;
   border: none;
@@ -285,9 +298,12 @@ onMounted(() => {
   color: #333;
 }
 .aba-ativa {
-  border-bottom-color: #8c1d1d; /* Cor do hemocentro */
+  border-bottom-color: #8c1d1d;
   color: #8c1d1d;
   font-weight: 600;
+}
+.icone-aba {
+  stroke: currentColor;
 }
 
 /* Tabela */
