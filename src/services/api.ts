@@ -701,28 +701,21 @@ export async function exportarTrilhaAuditoria(filtros: FiltrosAuditoria): Promis
 
 // ---------- Tipos de Usuários e Permissões (Gestor) ----------
 
-// Adicione junto às outras interfaces
-export type PermissaoUsuario =
-  | 'VISUALIZAR_DASHBOARD'
-  | 'ENVIAR_DOCUMENTOS'
-  | 'REVISAR_FICHAS'
-  | 'CONSULTAR_PRONTUARIOS'
-  | 'CONSULTAR_AUDITORIA'
-  | 'GERENCIAR_USUARIOS'
-
 export interface UsuarioGerenciamentoApi {
   id: number
   nome: string
   email: string
+  senha: string | null
   ativo: boolean
-  permissoes: PermissaoUsuario[]
+  perfil: 'GESTOR' | 'COLABORADOR';
   criadoEm?: string
 }
 
 export interface CriarUsuarioPayload {
   nome: string
   email: string
-  permissoes: PermissaoUsuario[]
+  senha: string
+  perfil: 'GESTOR' | 'COLABORADOR'
 }
 
 // Remova a função: export async function cadastrar(dados: { nome: string...

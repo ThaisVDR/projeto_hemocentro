@@ -41,7 +41,8 @@
 
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
-import { ehGestor, Permissao, temPermissao } from '@/services/sessao'
+// Removemos Permissao e temPermissao daqui, mantendo apenas ehGestor
+import { ehGestor } from '@/services/sessao' 
 import {
   CircleAlert,
   CircleHelp,
@@ -58,17 +59,19 @@ export default defineComponent({
   name: 'AppSidebar',
   components: { CircleHelp, Droplet, Users },
   setup() {
-    const todos: { rota: string; rotulo: string; icone: unknown; permissao: Permissao }[] = [
-      { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid, permissao: 'VISUALIZAR_DASHBOARD' },
-      { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload, permissao: 'ENVIAR_DOCUMENTOS' },
-      { rota: 'leituras', rotulo: 'Leituras com problema', icone: CircleAlert, permissao: 'REVISAR_FICHAS' },
-      { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks, permissao: 'REVISAR_FICHAS' },
-      { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart, permissao: 'CONSULTAR_PRONTUARIOS' },
-      { rota: 'auditoria', rotulo: 'Auditoria', icone: History, permissao: 'CONSULTAR_AUDITORIA' }
+    // A tipagem mudou: removemos 'permissao' e adicionamos 'requerGestor' opcional
+    const todos: { rota: string; rotulo: string; icone: unknown; requerGestor?: boolean }[] = [
+      { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid },
+      { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload },
+      { rota: 'leituras', rotulo: 'Leituras com problema', icone: CircleAlert },
+      { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks },
+      { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart },
+      // Auditoria é a única rota desta lista que é exclusiva do gestor
+      { rota: 'auditoria', rotulo: 'Auditoria', icone: History, requerGestor: true } 
     ]
 
-    // Só mostra o que a pessoa pode abrir (o gestor vê tudo).
-    const itens = computed(() => todos.filter((item) => temPermissao(item.permissao)))
+    // Filtra o menu: mostra o item se ele NÃO requer gestor, OU se o usuário logado for gestor
+    const itens = computed(() => todos.filter((item) => !item.requerGestor || ehGestor.value))
 
     return { itens, ehGestor }
   }

@@ -15,7 +15,6 @@
         :class="['aba', { 'aba-ativa': abaAtual === 'ativos' }]" 
         @click="abaAtual = 'ativos'"
       >
-        <!-- Ícone Lucide: User Check -->
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icone-aba">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>
         </svg>
@@ -26,7 +25,6 @@
         :class="['aba', { 'aba-ativa': abaAtual === 'inativos' }]" 
         @click="abaAtual = 'inativos'"
       >
-        <!-- Ícone Lucide: User X (ou User Lock) -->
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icone-aba">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="22" y2="13"/><line x1="22" y1="8" x2="17" y2="13"/>
         </svg>
@@ -40,7 +38,7 @@
           <tr>
             <th>Nome</th>
             <th>E-mail</th>
-            <th>Permissões</th>
+            <th>Perfil</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -48,7 +46,11 @@
           <tr v-for="usuario in listaExibida" :key="usuario.id">
             <td>{{ usuario.nome }}</td>
             <td>{{ usuario.email }}</td>
-            <td>{{ formatarPermissoes(usuario.permissoes) }}</td>
+            <td>
+              <span :class="['badge-perfil', usuario.perfil === 'GESTOR' ? 'badge-gestor' : 'badge-colaborador']">
+                {{ usuario.perfil === 'GESTOR' ? 'GESTOR' : 'COLABORADOR' }}
+              </span>
+            </td>
             <td>
               <button 
                 v-if="usuario.ativo" 
@@ -88,14 +90,30 @@
             <label>E-mail Institucional</label>
             <input type="email" v-model="form.email" required placeholder="Ex: joao@hemocentro.mt.gov.br" />
           </div>
+
+          <div class="campo campo-senha">
+            <label>Senha Inicial</label>
+            <div class="input-container">
+              <input 
+                :type="mostrarSenha ? 'text' : 'password'" 
+                v-model="form.senha" 
+                required 
+                placeholder="Insira a palavra-passe" 
+              />
+              <button type="button" class="botao-olho" @click="mostrarSenha = !mostrarSenha" tabindex="-1">
+                <EyeOff v-if="mostrarSenha" :size="18" />
+                <Eye v-else :size="18" />
+              </button>
+            </div>
+          </div>
           
-          <fieldset class="grupo-checkboxes">
-            <legend>Permissões de Acesso</legend>
-            <label class="checkbox-item" v-for="perm in permissoesDisponiveis" :key="perm.valor">
-              <input type="checkbox" :value="perm.valor" v-model="form.permissoes" />
-              <span>{{ perm.rotulo }}</span>
-            </label>
-          </fieldset>
+          <div class="campo">
+            <label>Perfil de Acesso</label>
+            <select v-model="form.perfil" required>
+              <option value="COLABORADOR">Colaborador</option>
+              <option value="GESTOR">Gestor</option>
+            </select>
+          </div>
 
           <div v-if="erroModal" class="mensagem-erro">
             {{ erroModal }}
@@ -117,6 +135,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { Eye, EyeOff } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { 
   listarUsuarios, 
@@ -124,11 +143,13 @@ import {
   inativarUsuario, 
   reativarUsuario, 
   UsuarioGerenciamentoApi, 
-  PermissaoUsuario, 
   ErroApi 
 } from '@/services/api'
 
-// Mensagem de feedback na tela (substitui o useAvisos se ele não estiver disponível)
+// Controle de visibilidade da senha
+const mostrarSenha = ref(false)
+
+// Mensagem de feedback na tela
 const mensagemFeedback = ref({ texto: '', tipo: 'sucesso' as 'sucesso' | 'erro' })
 
 function mostrarAviso(texto: string, tipo: 'sucesso' | 'erro' = 'sucesso') {
@@ -156,27 +177,12 @@ const erroModal = ref('')
 const form = ref({
   nome: '',
   email: '',
-  permissoes: [] as PermissaoUsuario[]
+  senha: '',
+  perfil: 'COLABORADOR' as 'GESTOR' | 'COLABORADOR'
 })
-
-// Mapeamento exato com o Enum do Prisma no Backend
-const permissoesDisponiveis: { valor: PermissaoUsuario, rotulo: string }[] = [
-  { valor: 'VISUALIZAR_DASHBOARD', rotulo: 'Visualizar Dashboard' },
-  { valor: 'ENVIAR_DOCUMENTOS', rotulo: 'Enviar Documentos (Upload)' },
-  { valor: 'REVISAR_FICHAS', rotulo: 'Revisar Fichas e Prontuários' },
-  { valor: 'CONSULTAR_PRONTUARIOS', rotulo: 'Consultar Prontuários' },
-  { valor: 'CONSULTAR_AUDITORIA', rotulo: 'Acessar Trilha de Auditoria' },
-  { valor: 'GERENCIAR_USUARIOS', rotulo: 'Gestão de Usuários (Gestor)' }
-]
-
-function formatarPermissoes(permissoes: PermissaoUsuario[]): string {
-  if (!permissoes || permissoes.length === 0) return 'Nenhuma permissão'
-  return `${permissoes.length} concedida(s)`
-}
 
 async function carregarTodos() {
   try {
-    // Busca ativos e inativos explicitamente para garantir que ambos os arrays são preenchidos
     const [ativos, inativos] = await Promise.all([
       listarUsuarios(true).catch(() => []),
       listarUsuarios(false).catch(() => [])
@@ -190,17 +196,13 @@ async function carregarTodos() {
 }
 
 function abrirModalCadastro() {
-  form.value = { nome: '', email: '', permissoes: [] }
+  form.value = { nome: '', email: '', senha: '', perfil: 'COLABORADOR' }
+  mostrarSenha.value = false // Reseta o olho ao reabrir o modal
   erroModal.value = ''
   mostrarModal.value = true
 }
 
 async function salvarUsuario() {
-  if (form.value.permissoes.length === 0) {
-    erroModal.value = 'Selecione ao menos uma permissão.'
-    return
-  }
-
   salvando.value = true
   erroModal.value = ''
 
@@ -208,17 +210,16 @@ async function salvarUsuario() {
     const payload = {
       nome: form.value.nome.trim(),
       email: form.value.email.trim(),
-      permissoes: form.value.permissoes,
-      senha: 'Hemocentro@2026' // Senha provisória que cumpre os requisitos de segurança
+      senha: form.value.senha,
+      perfil: String(form.value.perfil).toUpperCase()
     }
     
     await criarUsuario(payload as any)
     
     mostrarModal.value = false
-    mostrarAviso('Utilizador registado com sucesso! A palavra-passe provisória é Hemocentro@2026.', 'sucesso')
+    mostrarAviso('Utilizador registado com sucesso!', 'sucesso')
     await carregarTodos()
   } catch (e: any) {
-    // Se o backend retornar um erro detalhado de validação, exibe-o no modal
     erroModal.value = e instanceof ErroApi 
       ? e.message 
       : (e?.message || 'Erro ao registar o utilizador.')
@@ -272,6 +273,35 @@ onMounted(() => {
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fecaca;
+}
+
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-container input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.botao-olho {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #666;
+  padding: 0;
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.botao-olho:hover {
+  color: #333;
 }
 
 /* Abas com Ícones */
@@ -339,6 +369,24 @@ onMounted(() => {
   font-style: italic;
 }
 
+/* Badges de Perfil */
+.badge-perfil {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-gestor {
+  background: #fef2f2;
+  color: #8c1d1d;
+  border: 1px solid #fecaca;
+}
+.badge-colaborador {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
 /* Botões da Tabela */
 .botao-inativar, .botao-reativar {
   padding: 6px 12px;
@@ -400,49 +448,21 @@ onMounted(() => {
   color: #444;
 }
 .form-cadastro input[type="text"],
-.form-cadastro input[type="email"] {
+.form-cadastro input[type="email"],
+.form-cadastro input[type="password"],
+.form-cadastro select {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+  background-color: #fff;
 }
-.form-cadastro input:focus {
+.form-cadastro input:focus,
+.form-cadastro select:focus {
   outline: none;
   border-color: #8c1d1d;
   box-shadow: 0 0 0 2px rgba(140, 29, 29, 0.1);
-}
-
-/* Checkboxes */
-.grupo-checkboxes {
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 16px;
-  margin-bottom: 20px;
-  background: #fafafa;
-}
-.grupo-checkboxes legend {
-  font-weight: 600;
-  font-size: 14px;
-  color: #444;
-  padding: 0 8px;
-}
-.checkbox-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #333;
-}
-.checkbox-item:last-child {
-  margin-bottom: 0;
-}
-.checkbox-item input {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
 }
 
 /* Ações e Erros */

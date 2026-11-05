@@ -2,8 +2,8 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { consultarSessao } from '@/services/api'
-import { ehGestor } from '@/services/sessao'
-import { estaAutenticado, iniciarSessao, Permissao, temPermissao } from '@/services/sessao'
+// Importamos apenas o necessário do novo arquivo de sessão
+import { estaAutenticado, ehGestor, iniciarSessao } from '@/services/sessao'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: 'dashboard' } },
@@ -31,31 +31,31 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'dashboard',
         component: () => import('@/views/DashboardView.vue'),
-        meta: { titulo: 'Dashboard', permissao: 'VISUALIZAR_DASHBOARD' }
+        meta: { titulo: 'Dashboard' }
       },
       {
         path: 'upload',
         name: 'upload',
         component: () => import('@/views/UploadView.vue'),
-        meta: { titulo: 'Upload de documentos', permissao: 'ENVIAR_DOCUMENTOS' }
+        meta: { titulo: 'Upload de documentos' }
       },
       {
         path: 'leituras',
         name: 'leituras',
         component: () => import('@/views/LeiturasView.vue'),
-        meta: { titulo: 'Leituras com problema', permissao: 'REVISAR_FICHAS' }
+        meta: { titulo: 'Leituras com problema' }
       },
       {
         path: 'fila',
         name: 'fila',
         component: () => import('@/views/FilaRevisaoView.vue'),
-        meta: { titulo: 'Fila de revisão', permissao: 'REVISAR_FICHAS' }
+        meta: { titulo: 'Fila de revisão' }
       },
       {
         path: 'revisar/:fichaId?',
         name: 'revisar',
         component: () => import('@/views/RevisarFichaView.vue'),
-        meta: { titulo: 'Revisar ficha', permissao: 'REVISAR_FICHAS' },
+        meta: { titulo: 'Revisar ficha' },
         // Sem ficha escolhida não há o que revisar: a ficha só chega aqui depois do upload e da leitura da IA.
         beforeEnter: (destino) => (destino.params.fichaId ? true : { name: 'fila' })
       },
@@ -63,32 +63,25 @@ const routes: RouteRecordRaw[] = [
         path: 'prontuarios/:pacienteId?',
         name: 'prontuarios',
         component: () => import('@/views/ProntuarioView.vue'),
-        meta: { titulo: 'Prontuários', permissao: 'CONSULTAR_PRONTUARIOS' }
+        meta: { titulo: 'Prontuários' }
       },
       {
         path: 'prontuarios/:pacienteId/ficha-completa',
         name: 'ficha-completa',
         component: () => import('@/views/FichaCompletaView.vue'),
-        meta: { titulo: 'Prontuários', permissao: 'CONSULTAR_PRONTUARIOS' }
+        meta: { titulo: 'Prontuários' }
       },
       {
-      path: 'usuarios', // <-- sem a barra inicial
+        path: 'usuarios',
         name: 'usuarios',
         component: () => import('@/views/UsuariosView.vue'),
-        meta: { titulo: 'Gestão de Usuários', permissao: 'GERENCIAR_USUARIOS' }, // <-- padronizado com as outras
-        beforeEnter: (to, from, next) => {
-          if (!ehGestor.value) {
-            next({ name: 'dashboard' }) // Redireciona não-gestores
-          } else {
-            next()
-          }
-        }
+        meta: { titulo: 'Gestão de Usuários', requerGestor: true } // Marca a rota como restrita
       },
       {
         path: 'auditoria',
         name: 'auditoria',
         component: () => import('@/views/AuditoriaView.vue'),
-        meta: { titulo: 'Auditoria', permissao: 'CONSULTAR_AUDITORIA' }
+        meta: { titulo: 'Auditoria', requerGestor: true } // Marca a rota como restrita
       }
     ]
   },
@@ -107,8 +100,12 @@ export function primeiraTelaPermitida(): string | null {
   const rotas = router.getRoutes()
   return TELAS_INICIAIS.find((nome) => {
     const rota = rotas.find((r) => r.name === nome)
-    return temPermissao(rota?.meta.permissao as Permissao | undefined)
-  }) ?? null
+    // Se a rota exige gestor e o usuário atual não é, ele não pode acessar
+    if (rota?.meta.requerGestor && !ehGestor.value) {
+      return false
+    }
+    return true // Se não exige gestor, ou se exige e ele é gestor, está permitido
+  }) ?? 'dashboard'
 }
 
 // Ao abrir o sistema numa aba nova, o cookie pode ainda valer: pergunta ao backend uma vez.
@@ -135,8 +132,8 @@ router.beforeEach(async (destino) => {
     return { name: 'login', query: { redirect: destino.fullPath } }
   }
 
-  // Logado, mas sem permissão para esta tela: vai para a primeira que pode abrir.
-  if (!temPermissao(destino.meta.permissao as Permissao | undefined)) {
+  // Logado, mas tentando acessar área restrita sem ser Gestor
+  if (destino.meta.requerGestor && !ehGestor.value) {
     const outra = primeiraTelaPermitida()
     return outra && outra !== destino.name ? { name: outra } : false
   }
