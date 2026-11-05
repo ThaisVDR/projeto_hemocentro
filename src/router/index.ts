@@ -54,7 +54,9 @@ const routes: RouteRecordRaw[] = [
         path: 'revisar/:fichaId?',
         name: 'revisar',
         component: () => import('@/views/RevisarFichaView.vue'),
-        meta: { titulo: 'Revisar ficha', permissao: 'REVISAR_FICHAS' }
+        meta: { titulo: 'Revisar ficha', permissao: 'REVISAR_FICHAS' },
+        // Sem ficha escolhida não há o que revisar: a ficha só chega aqui depois do upload e da leitura da IA.
+        beforeEnter: (destino) => (destino.params.fichaId ? true : { name: 'fila' })
       },
       {
         path: 'prontuarios/:pacienteId?',

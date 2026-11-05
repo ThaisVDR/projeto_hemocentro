@@ -143,12 +143,15 @@ export function fichaDaExtracao(detalhe: FichaDetalheApi): FichaEmRevisao {
   }
 
 
-  // Anticorpos: o backend guarda num texto só ("Anti-E, Anti-c"), na mesma pesquisa da página 4.
-  ih.anticorpos = principal
-    ? extrairAnticorpos(principal.especificidade || principal.interpretacao).map(especificidade => ({
-      data: principal.dataPesquisa, metodo: null, especificidade, classe: null
-    }))
-    : []
+  // Anticorpos: uma linha por anticorpo, com data e classe (pesquisa da página 4).
+  // Fichas antigas sem a lista: monta a partir do texto da especificidade ("Anti-E, Anti-c").
+  ih.anticorpos = !principal
+    ? []
+    : principal.anticorpos?.length
+      ? principal.anticorpos.map(a => ({ data: a.data, especificidade: a.especificidade, classe: a.classe }))
+      : extrairAnticorpos(principal.especificidade || principal.interpretacao).map(especificidade => ({
+        data: null, especificidade, classe: null
+      }))
   if (ih.anticorpos.length > 0) ih.anticorposConferencia.estado = 'sugerido'
   return ficha
 }
@@ -269,12 +272,15 @@ function fenotipagemParaApi(ficha: FichaEmRevisao) {
     .map(antigeno => ({ antigeno: ANTIGENO_NO_BACKEND[antigeno] ?? antigeno, resultado: fenotipo[antigeno] as string }))
 }
 
-// Tabela de anticorpos da tela → texto único do backend, ex.: "Anti-E, Anti-c".
-function especificidadeParaApi(ficha: FichaEmRevisao): string | null {
-  const nomes = ficha.imunohematologia.anticorpos
-    .map(anticorpo => anticorpo.especificidade?.trim())
-    .filter((nome): nome is string => !!nome)
-  return nomes.length > 0 ? nomes.join(', ') : null
+// Tabela de anticorpos da tela → lista do backend (só as linhas com especificidade).
+function anticorposParaApi(ficha: FichaEmRevisao) {
+  return ficha.imunohematologia.anticorpos
+    .filter(anticorpo => anticorpo.especificidade?.trim())
+    .map(anticorpo => ({
+      especificidade: (anticorpo.especificidade as string).trim(),
+      data: anticorpo.data || null,
+      classe: anticorpo.classe || null
+    }))
 }
 
 export function alteracoesDaImunohematologia(
@@ -285,13 +291,13 @@ export function alteracoesDaImunohematologia(
 
   const fenotipagem = fenotipagemParaApi(agora)
   const mudouFenotipagem = JSON.stringify(fenotipagem) !== JSON.stringify(fenotipagemParaApi(antes))
-  const especificidade = especificidadeParaApi(agora)
-  const mudouEspecificidade = especificidade !== especificidadeParaApi(antes)
+  const anticorpos = anticorposParaApi(agora)
+  const mudouAnticorpos = JSON.stringify(anticorpos) !== JSON.stringify(anticorposParaApi(antes))
 
-  if (mudaram.length === 0 && !mudouFenotipagem && !mudouEspecificidade) return []
+  if (mudaram.length === 0 && !mudouFenotipagem && !mudouAnticorpos) return []
 
   if (indice === null) {
-    const nova: Record<string, unknown> = { especificidade, interpretacao: null, fenotipagem, pagina: 4 }
+    const nova: Record<string, unknown> = { anticorpos, interpretacao: null, fenotipagem, pagina: 4 }
     campos.forEach(campo => { nova[CAMPOS_PESQUISA[campo]] = valorDaPesquisa(agora, campo) })
     return [{ campo: 'pesquisas[0]', valor: nova }]
   }
@@ -301,7 +307,7 @@ export function alteracoesDaImunohematologia(
     valor: valorDaPesquisa(agora, campo)
   }))
   if (mudouFenotipagem) alteracoes.push({ campo: `pesquisas[${indice}].fenotipagem`, valor: fenotipagem })
-  if (mudouEspecificidade) alteracoes.push({ campo: `pesquisas[${indice}].especificidade`, valor: especificidade })
+  if (mudouAnticorpos) alteracoes.push({ campo: `pesquisas[${indice}].anticorpos`, valor: anticorpos })
   return alteracoes
 }
 
