@@ -94,7 +94,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA, StatusFicha } from '@/domain/revisao'
 import { FICHAS_POR_PAGINA, FichaFilaApi, listarFilaRevisao, recusarFicha } from '@/services/api'
 import { MotivoRecusa } from '@/domain/revisao'
-import { estaAutenticado, tokenAtual } from '@/services/sessao'
+import { estaAutenticado, idUsuarioAtual } from '@/services/sessao'
 import { avisar } from '@/composables/useAvisos'
 import DialogoRecusa from '@/components/revisao/DialogoRecusa.vue'
 
@@ -176,7 +176,7 @@ export default defineComponent({
     function podeRecusar(ficha: FichaFilaApi) {
       if (!estaAutenticado.value) return false
       if (ficha.status === 'AGUARDANDO_REVISAO' || ficha.status === 'COM_PENDENCIA') return true
-      return ficha.status === 'EM_REVISAO' && String(ficha.revisor?.id) === tokenAtual.value
+      return ficha.status === 'EM_REVISAO' && String(ficha.revisor?.id) === idUsuarioAtual.value
     }
 
     async function confirmarRecusa(escolha: { motivo: MotivoRecusa; observacao: string | null }) {

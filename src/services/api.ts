@@ -1,27 +1,40 @@
 import { Reacao, extrairAnticorpos, interpretarReacao } from '@/domain/fenotipo'
-import { tokenAtual } from '@/services/sessao'
+import { csrfAtual, encerrarSessao, Sessao } from '@/services/sessao'
 import { MotivoRecusa, StatusFicha } from '@/domain/revisao'
 import { TipoEventoApi } from '@/domain/auditoria'
 
 export const API_URL = (process.env.VUE_APP_API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '')
-
-const esperar = (ms = 600) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 export class ErroApi extends Error {
   constructor(mensagem: string, readonly status?: number) {
     super(mensagem)
   }
 }
-async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
+// Toda chamada leva o cookie da sessão (credentials: 'include').
+// POST, PATCH e DELETE levam também o token CSRF que o login devolveu.
+async function chamar(caminho: string, opcoes: RequestInit = {}): Promise<Response> {
   const headers = new Headers(opcoes.headers)
-  if (tokenAtual.value) headers.set('X-Usuario-Id', tokenAtual.value)
+  const metodo = (opcoes.method ?? 'GET').toUpperCase()
+  if (metodo !== 'GET' && csrfAtual.value) headers.set('X-CSRF-Token', csrfAtual.value)
 
   let resposta: Response
   try {
-    resposta = await fetch(`${API_URL}${caminho}`, { ...opcoes, headers })
+    resposta = await fetch(`${API_URL}${caminho}`, { ...opcoes, headers, credentials: 'include' })
   } catch {
     throw new ErroApi(`Não foi possível conectar ao servidor (${API_URL}). Verifique se o backend está rodando.`)
   }
+
+  // Sessão expirou ou foi encerrada no servidor: limpa a tela e volta para o login.
+  if (resposta.status === 401 && !caminho.startsWith('/auth/')) {
+    encerrarSessao()
+    const voltar = encodeURIComponent(location.pathname + location.search)
+    location.assign(`/login?redirect=${voltar}`)
+  }
+  return resposta
+}
+
+async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
+  const resposta = await chamar(caminho, opcoes)
 
   const corpo = await resposta.json().catch(() => null)
   if (!resposta.ok) {
@@ -297,27 +310,20 @@ export function buscarCidades(busca: string): Promise<CidadeApi[]> {
 }
 
 // ---------- Autenticação ----------
+// POST /auth/login → cria a sessão (cookie) e devolve o usuário e o token CSRF
+// GET /auth/sessao → quem está logado (se o cookie ainda vale)
+// POST /auth/logout, /auth/esqueci-senha, /auth/redefinir-senha
 
-export interface RespostaLoginApi {
-  token: string
-  usuario: { nome: string; email: string; perfil: string }
+export function entrar(dados: { email: string; senha: string }): Promise<Sessao> {
+  return enviarJson<Sessao>('/auth/login', 'POST', { email: dados.email.trim(), senha: dados.senha })
 }
 
-interface UsuarioApi {
-  id: number
-  nome: string
-  email: string
+export function consultarSessao(): Promise<Sessao> {
+  return requisitar<Sessao>('/auth/sessao')
 }
 
-export async function entrar(dados: { email: string; senha: string }): Promise<RespostaLoginApi> {
-  const lista = await requisitar<UsuarioApi[]>('/usuarios')
-  const u = lista.find((x) => x.email.toLowerCase() === dados.email.trim().toLowerCase())
-  if (!u) throw new ErroApi('Usuário não encontrado ou inativo.', 401)
-
-  return {
-    token: String(u.id),
-    usuario: { nome: u.nome, email: u.email, perfil: 'revisor' }
-  }
+export async function sair(): Promise<void> {
+  await chamar('/auth/logout', { method: 'POST' })
 }
 
 export async function cadastrar(dados: { nome: string; email: string; senha: string }): Promise<void> {
@@ -335,8 +341,11 @@ export async function cadastrar(dados: { nome: string; email: string; senha: str
 }
 
 export async function solicitarRedefinicaoSenha(email: string): Promise<void> {
-  void email
-  await esperar()
+  await enviarJson<unknown>('/auth/esqueci-senha', 'POST', { email: email.trim() })
+}
+
+export async function redefinirSenha(token: string, senha: string): Promise<void> {
+  await enviarJson<unknown>('/auth/redefinir-senha', 'POST', { token, senha })
 }
 
 // ---------- Pacientes ----------
@@ -688,18 +697,9 @@ export function listarUsuarios(): Promise<{ id: number; nome: string; email: str
   return requisitar('/usuarios')
 }
 
-// A exportação devolve um arquivo (não JSON) e precisa do header X-Usuario-Id,
-// então não dá para usar um <a href>: baixamos como Blob e o componente dispara o download.
+// A exportação devolve um arquivo (não JSON): baixamos como Blob e o componente dispara o download.
 export async function exportarTrilhaAuditoria(filtros: FiltrosAuditoria): Promise<{ blob: Blob; nome: string }> {
-  const headers = new Headers()
-  if (tokenAtual.value) headers.set('X-Usuario-Id', tokenAtual.value)
-
-  let resposta: Response
-  try {
-    resposta = await fetch(`${API_URL}/auditoria/eventos/exportar?${parametrosAuditoria(filtros).toString()}`, { headers })
-  } catch {
-    throw new ErroApi(`Não foi possível conectar ao servidor (${API_URL}). Verifique se o backend está rodando.`)
-  }
+  const resposta = await chamar(`/auditoria/eventos/exportar?${parametrosAuditoria(filtros).toString()}`)
 
   if (!resposta.ok) {
     const corpo = await resposta.json().catch(() => null)

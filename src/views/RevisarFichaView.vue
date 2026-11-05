@@ -397,7 +397,7 @@ import {
   aprovarFicha, buscarFicha, recusarFicha, salvarAlteracoes, sinalizarPendenciaFicha, urlArquivoDocumento, assumirRevisao,
   iniciarRevisao, AlteracaoApi, buscarSemelhantes, PacienteSemelhanteApi
 } from '@/services/api'
-import { estaAutenticado, tokenAtual } from '@/services/sessao'
+import { estaAutenticado, idUsuarioAtual } from '@/services/sessao'
 import CampoData from '@/components/CampoData.vue'
 import { formatarData } from '@/utils/formatacao'
 import { avisar, fecharErros } from '@/composables/useAvisos'
@@ -451,7 +451,7 @@ export default defineComponent({
     const pacienteEscolhido = ref<string | null | undefined>(undefined)
     const falta = computed(() => semelhantes.value.length > 0 && pacienteEscolhido.value === undefined)
     const revisaoEhMinha = computed(() =>
-      ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === tokenAtual.value
+      ficha.status === 'EM_REVISAO' && revisor.value !== null && String(revisor.value.id) === idUsuarioAtual.value
     )
 
     const conferencia = computed(() => resumirConferencia(ficha))
