@@ -70,11 +70,17 @@ export interface PesquisaBioRadRevisao {
   reacoesConferencia: Conferencia
 }
 
+export type ClasseAnticorpo = 'IGG' | 'IGM'
+
+export const CLASSES_ANTICORPO: { valor: ClasseAnticorpo; rotulo: string }[] = [
+  { valor: 'IGG', rotulo: 'IgG' },
+  { valor: 'IGM', rotulo: 'IgM' }
+]
+
 export interface AnticorpoIdentificado {
   data: string | null
-  metodo: string | null
   especificidade: string | null
-  classe: string | null
+  classe: ClasseAnticorpo | null
 }
 
 /** Página "Pesquisa Imuno Hematológica" (MTHEMO.GDL.IMUNOREC.PIH.F12). */

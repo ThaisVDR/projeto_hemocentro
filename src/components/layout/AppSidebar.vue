@@ -46,7 +46,6 @@ import {
   CircleAlert,
   CircleHelp,
   Droplet,
-  FileCheck,
   FolderHeart,
   History,
   LayoutGrid,
@@ -64,7 +63,6 @@ export default defineComponent({
       { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload, permissao: 'ENVIAR_DOCUMENTOS' },
       { rota: 'leituras', rotulo: 'Leituras com problema', icone: CircleAlert, permissao: 'REVISAR_FICHAS' },
       { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks, permissao: 'REVISAR_FICHAS' },
-      { rota: 'revisar', rotulo: 'Revisar ficha', icone: FileCheck, permissao: 'REVISAR_FICHAS' },
       { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart, permissao: 'CONSULTAR_PRONTUARIOS' },
       { rota: 'auditoria', rotulo: 'Auditoria', icone: History, permissao: 'CONSULTAR_AUDITORIA' }
     ]
