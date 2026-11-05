@@ -2,7 +2,7 @@
   <form class="form" novalidate @submit.prevent="aoEnviar">
     <header class="form__cabecalho">
       <h1>Entrar</h1>
-      <p>Acesse a área de trabalho do gestor.</p>
+      <p>Acesse a área de trabalho do Hemocentro.</p>
     </header>
 
     <p v-if="erroGeral" class="form__aviso" role="alert">{{ erroGeral }}</p>
@@ -30,7 +30,7 @@
 
     
     <nav class="form__links">
-      <router-link class="form__link" :to="{ name: 'cadastro' }">Cadastra-se</router-link>
+      <router-link class="form__link" :to="{ name: 'esqueci-senha' }">Esqueci a senha</router-link>
     </nav>
 
   </form>

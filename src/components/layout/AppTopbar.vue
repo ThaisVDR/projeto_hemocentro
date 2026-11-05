@@ -30,6 +30,7 @@
 import { computed, defineComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronRight, LogIn, LogOut } from 'lucide-vue-next'
+import { sair as sairNoBackend } from '@/services/api'
 import { encerrarSessao, usuarioLogado } from '@/services/sessao'
 import { iniciais } from '@/utils/formatacao'
 
@@ -42,8 +43,13 @@ export default defineComponent({
     const titulo = computed(() => rota.meta.titulo as string | undefined)
     const data = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 
-    // O login dura só enquanto a aba está aberta (sessionStorage): sair encerra na hora.
-    function sair() {
+    // Encerra a sessão no backend (apaga o cookie) e na tela.
+    async function sair() {
+      try {
+        await sairNoBackend()
+      } catch {
+        // Mesmo sem resposta do backend, a tela sai.
+      }
       encerrarSessao()
       roteador.push({ name: 'login' })
     }

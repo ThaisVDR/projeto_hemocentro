@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 import {
   CircleHelp,
   Droplet,
@@ -40,19 +40,22 @@ import {
   ListChecks,
   Upload
 } from 'lucide-vue-next'
+import { Permissao, temPermissao } from '@/services/sessao'
 
 export default defineComponent({
   name: 'AppSidebar',
   components: { CircleHelp, Droplet },
   setup() {
-    const itens = [
-      { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid },
-      { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload },
-      { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks },
-      { rota: 'revisar', rotulo: 'Revisar ficha', icone: FileCheck },
-      { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart },
-      { rota: 'auditoria', rotulo: 'Auditoria', icone: History }
+    const todos: { rota: string; rotulo: string; icone: unknown; permissao: Permissao }[] = [
+      { rota: 'dashboard', rotulo: 'Dashboard', icone: LayoutGrid, permissao: 'VISUALIZAR_DASHBOARD' },
+      { rota: 'upload', rotulo: 'Upload de documentos', icone: Upload, permissao: 'ENVIAR_DOCUMENTOS' },
+      { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks, permissao: 'REVISAR_FICHAS' },
+      { rota: 'revisar', rotulo: 'Revisar ficha', icone: FileCheck, permissao: 'REVISAR_FICHAS' },
+      { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart, permissao: 'CONSULTAR_PRONTUARIOS' },
+      { rota: 'auditoria', rotulo: 'Auditoria', icone: History, permissao: 'CONSULTAR_AUDITORIA' }
     ]
+    // Só mostra o que a pessoa pode abrir (o gestor vê tudo).
+    const itens = computed(() => todos.filter((item) => temPermissao(item.permissao)))
     return { itens }
   }
 })
