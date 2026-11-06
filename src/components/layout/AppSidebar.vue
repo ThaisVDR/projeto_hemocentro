@@ -66,7 +66,7 @@ export default defineComponent({
       { rota: 'leituras', rotulo: 'Leituras com problema', icone: CircleAlert },
       { rota: 'fila', rotulo: 'Fila de revisão', icone: ListChecks },
       { rota: 'prontuarios', rotulo: 'Prontuários', icone: FolderHeart },
-      { rota: 'auditoria', rotulo: 'Auditoria', icone: History, requerGestor: true } 
+      { rota: 'auditoria', rotulo: 'Auditoria', icone: History } 
     ]
 
     // Filtra o menu: mostra o item se ele NÃO requer gestor, OU se o usuário logado for gestor

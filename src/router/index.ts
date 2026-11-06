@@ -2,8 +2,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { consultarSessao } from '@/services/api'
-// Importamos apenas o necessário do novo arquivo de sessão
-import { estaAutenticado, ehGestor, iniciarSessao } from '@/services/sessao'
+import { estaAutenticado, ehGestor, encerrarSessao, iniciarSessao, precisaTrocarSenha } from '@/services/sessao'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: 'dashboard' } },
@@ -14,6 +13,12 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: 'login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },
       { path: 'esqueci-senha', name: 'esqueci-senha', component: () => import('@/views/auth/EsqueciSenhaView.vue') },
+      {
+        path: 'trocar-senha',
+        name: 'trocar-senha',
+        component: () => import('@/views/auth/TrocarSenhaView.vue'),
+        meta: { tambemLogado: true }
+      },
       // Link do e-mail. Também serve para o usuário novo criar a primeira senha.
       {
         path: 'redefinir-senha',
@@ -75,13 +80,13 @@ const routes: RouteRecordRaw[] = [
         path: 'usuarios',
         name: 'usuarios',
         component: () => import('@/views/UsuariosView.vue'),
-        meta: { titulo: 'Gestão de Usuários', requerGestor: true } // Marca a rota como restrita
+        meta: { titulo: 'Gestão de Usuários', requerGestor: true }
       },
       {
         path: 'auditoria',
         name: 'auditoria',
         component: () => import('@/views/AuditoriaView.vue'),
-        meta: { titulo: 'Auditoria', requerGestor: true } // Marca a rota como restrita
+        meta: { titulo: 'Auditoria'}
       }
     ]
   },
@@ -100,26 +105,36 @@ export function primeiraTelaPermitida(): string | null {
   const rotas = router.getRoutes()
   return TELAS_INICIAIS.find((nome) => {
     const rota = rotas.find((r) => r.name === nome)
-    // Se a rota exige gestor e o usuário atual não é, ele não pode acessar
     if (rota?.meta.requerGestor && !ehGestor.value) {
       return false
     }
-    return true // Se não exige gestor, ou se exige e ele é gestor, está permitido
+    return true
   }) ?? 'dashboard'
 }
 
-// Ao abrir o sistema numa aba nova, o cookie pode ainda valer: pergunta ao backend uma vez.
+// Confere a sessão no backend uma vez por carregamento da página.
 let sessaoConferida = false
 
 router.beforeEach(async (destino) => {
-  if (!estaAutenticado.value && !sessaoConferida) {
+  // O sessionStorage é por aba, mas o cookie é compartilhado. Sem esta conferência,
+  // uma aba pode achar que é Gestor enquanto o cookie já é de um Colaborador.
+  if (!sessaoConferida) {
     sessaoConferida = true
     try {
       iniciarSessao(await consultarSessao())
     } catch {
-      // Sem sessão válida: segue como visitante.
+      encerrarSessao() // Sem sessão válida: segue como visitante.
     }
   }
+
+  if (destino.name === 'trocar-senha') {
+    if (!estaAutenticado.value) return { name: 'login' }
+    if (!precisaTrocarSenha.value) return { name: primeiraTelaPermitida() ?? 'dashboard' }
+    return
+  }
+
+  // Senha provisória: nada funciona até trocar.
+  if (estaAutenticado.value && precisaTrocarSenha.value) return { name: 'trocar-senha' }
 
   const publica = destino.matched.some((r) => r.meta.publica)
   if (publica) {

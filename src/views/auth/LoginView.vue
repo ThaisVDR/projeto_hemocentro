@@ -42,7 +42,7 @@ import { useRoute, useRouter } from 'vue-router'
 import CampoTexto from '@/components/ui/CampoTexto.vue'
 import { useFormulario } from '@/composables/useFormulario'
 import { entrar } from '@/services/api'
-import { iniciarSessao } from '@/services/sessao'
+import { iniciarSessao, precisaTrocarSenha } from '@/services/sessao'
 import { email, obrigatorio } from '@/utils/validacao'
 
 export default defineComponent({
@@ -68,6 +68,9 @@ export default defineComponent({
       })
 
       if (ok) {
+        // Senha provisória: vai direto para a tela de troca
+        if (precisaTrocarSenha.value) return roteador.push({ name: 'trocar-senha' })
+
         const proximaRota = destino.startsWith('/') && !destino.startsWith('//')
           ? destino
           : { name: 'dashboard' }
