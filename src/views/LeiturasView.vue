@@ -7,9 +7,10 @@
       </router-link>
     </PageHeader>
 
-    <div class="filtros">
-      <button v-for="filtro in filtros" :key="filtro.valor" type="button" class="filtro"
-        :class="{ 'filtro--ativo': filtroAtivo === filtro.valor }" @click="filtroAtivo = filtro.valor">
+      <div class="filtros-cartao" role="group" aria-label="Filtrar leituras">
+      <button v-for="filtro in filtros" :key="filtro.valor" type="button" class="filtro-cartao"
+        :class="{ 'filtro-cartao--ativo': filtroAtivo === filtro.valor }"
+        :aria-pressed="filtroAtivo === filtro.valor" @click="filtroAtivo = filtro.valor">
         <span>{{ filtro.rotulo }}</span>
         <strong>{{ contar(filtro.valor) }}</strong>
       </button>
@@ -143,41 +144,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.filtros {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 260px));
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.filtro {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 18px;
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-grande);
-  background: var(--cor-superficie);
-  color: var(--cor-texto-suave);
-  text-align: left;
-}
-
-.filtro strong {
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--cor-texto);
-}
-
-.filtro--ativo {
-  border-color: #e3a5b0;
-  background: var(--cor-primaria-suave);
-  color: var(--cor-primaria);
-}
-
-.filtro--ativo strong {
-  color: var(--cor-primaria);
-}
-
 .barra {
   display: flex;
   align-items: center;

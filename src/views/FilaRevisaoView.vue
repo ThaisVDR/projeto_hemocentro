@@ -7,9 +7,10 @@
       </router-link>
     </PageHeader>
 
-    <div class="filtros">
-      <button v-for="filtro in filtros" :key="filtro.valor" type="button" class="filtro"
-        :class="{ 'filtro--ativo': filtroAtivo === filtro.valor }" @click="escolherFiltro(filtro.valor)">
+       <div class="filtros-cartao" role="group" aria-label="Filtrar fichas por situação">
+      <button v-for="filtro in filtros" :key="filtro.valor" type="button" class="filtro-cartao"
+        :class="{ 'filtro-cartao--ativo': filtroAtivo === filtro.valor }"
+        :aria-pressed="filtroAtivo === filtro.valor" @click="escolherFiltro(filtro.valor)">
         <span>{{ filtro.rotulo }}</span>
         <strong>{{ contar(filtro.valor) }}</strong>
       </button>
@@ -32,11 +33,8 @@
         <p>{{ erro }}</p>
         <button type="button" class="botao" @click="carregar">Tentar novamente</button>
       </div>
-      <p v-else-if="fichas.length === 0" class="estado">
-        {{ busca ? 'Nenhuma ficha encontrada para essa busca.' : 'Nenhuma ficha nesta etapa.' }}
-      </p>
-
-      <table v-else class="tabela">
+      <p v-if="carregando && fichas.length === 0" class="estado">Carregando fichas…</p>
+        <table v-else class="tabela" :class="{ 'tabela--atualizando': carregando }">
         <thead>
           <tr>
             <th>Paciente / ficha</th>
@@ -137,7 +135,10 @@ export default defineComponent({
 
     const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / FICHAS_POR_PAGINA)))
 
+ let sequencia = 0
+
     async function carregar() {
+      const minha = ++sequencia
       carregando.value = true
       erro.value = null
       try {
@@ -146,17 +147,20 @@ export default defineComponent({
           busca: busca.value.trim(),
           pagina: pagina.value
         })
+        if (minha !== sequencia) return
         fichas.value = resposta.itens
         contadores.value = resposta.contadores
         total.value = resposta.total
       } catch (e) {
+        if (minha !== sequencia) return
         erro.value = (e as Error).message
       } finally {
-        carregando.value = false
+        if (minha === sequencia) carregando.value = false
       }
     }
 
     function escolherFiltro(filtro: Filtro) {
+      if (filtro === filtroAtivo.value) return
       filtroAtivo.value = filtro
       pagina.value = 1
       carregar()
@@ -209,11 +213,10 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.filtros {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+.tabela--atualizando {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
 .paginacao {
@@ -224,34 +227,6 @@ export default defineComponent({
   margin-top: 16px;
   font-size: 13px;
   color: var(--cor-texto-suave);
-}
-
-.filtro {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 18px;
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-grande);
-  background: var(--cor-superficie);
-  color: var(--cor-texto-suave);
-  text-align: left;
-}
-
-.filtro strong {
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--cor-texto);
-}
-
-.filtro--ativo {
-  border-color: #e3a5b0;
-  background: var(--cor-primaria-suave);
-  color: var(--cor-primaria);
-}
-
-.filtro--ativo strong {
-  color: var(--cor-primaria);
 }
 
 .barra {
