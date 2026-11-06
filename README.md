@@ -1,72 +1,81 @@
 # Hemocentro MT • Prontuário Digital (frontend)
 
-Sistema para **digitalizar as fichas em papel** do Hemocentro MT. As fichas escaneadas são lidas por IA, **conferidas por uma pessoa** e só então gravadas no prontuário do paciente.
+Sistema para **digitalizar as fichas em papel** do Hemocentro MT. A ficha escaneada é lida por uma IA, **conferida por uma pessoa** e só então gravada no prontuário do paciente.
 
-Este repositório é o **frontend** (as telas). O **backend** (API, IA e banco de dados) fica em outro repositório:
-➡️ [Taynah-M-Alves/Backend-Hemocentro](https://github.com/Taynah-M-Alves/Backend-Hemocentro)
+Este repositório é o **frontend**, ou seja, as telas. O **backend** (API, leitura por IA e banco de dados) fica em outro repositório: [Taynah-M-Alves/Backend-Hemocentro](https://github.com/Taynah-M-Alves/Backend-Hemocentro).
 
-Os dois **não precisam estar no mesmo repositório**: o frontend conversa com o backend pela internet, usando o endereço configurado em `VUE_APP_API_URL`.
+| Documento | O que tem |
+|---|---|
+| Este README | como rodar, configurar e contribuir |
+| [docs/telas.md](docs/telas.md) | cada tela do sistema: para que serve e o que faz |
+| [docs/arquitetura.md](docs/arquitetura.md) | como o código está organizado e como criar uma tela nova |
+| [docs/deploy.md](docs/deploy.md) | como gerar a versão de produção do frontend |
 
 ---
 
 ## Tecnologias
 
-- [Vue 3](https://vuejs.org/) com TypeScript
-- [Vue Router](https://router.vuejs.org/) para a navegação entre telas
+- [Vue 3](https://vuejs.org/) com TypeScript (componentes com `defineComponent` e `setup()`)
+- [Vue Router](https://router.vuejs.org/) para a navegação e o controle de acesso às telas
 - [Lucide](https://lucide.dev/) para os ícones
-- Vue CLI para rodar e compilar o projeto
+- Vue CLI para rodar, verificar e compilar o projeto
+
+Não há biblioteca de componentes nem de estado: os estilos ficam em `src/styles/base.css` e o estado compartilhado (sessão e avisos) é feito com `ref` e `computed` do próprio Vue.
 
 ## Requisitos
 
 - [Node.js](https://nodejs.org/) (versão LTS)
 - [Git](https://git-scm.com/)
+- O backend rodando, com o banco PostgreSQL (veja o README do backend)
 
 ---
 
-## Como rodar só o frontend
-
-```bash
-git clone https://github.com/ThaisVDR/projeto_hemocentro.git
-cd projeto_hemocentro
-npm install
-npm run serve
-```
-
-Abra o endereço que aparecer no terminal (normalmente http://localhost:8080).
-
-Sem o backend rodando, as telas abrem normalmente, mas as buscas e envios mostram **"Não foi possível conectar ao servidor"**. Isso é esperado.
-
-## Como rodar junto com o backend
+## Como rodar
 
 Use **dois terminais**, um para cada projeto.
 
-**Terminal 1: backend** (veja o README do backend para configurar o banco e as chaves da IA)
+**Terminal 1: backend**
 
 ```bash
 cd Backend-Hemocentro
+git pull
 npm install
+npx prisma migrate deploy
 npx prisma generate
 npm run start:dev
 ```
 
-O backend roda em http://localhost:3000.
+O backend está pronto quando aparecer `Nest application successfully started`. Ele roda em http://localhost:3000/api.
+
+Na primeira vez, crie o usuário gestor:
+
+```bash
+npm run build
+node dist/scripts/criar-primeiro-gestor.js
+```
 
 **Terminal 2: frontend**
 
 ```bash
 cd projeto_hemocentro
+git pull origin main
+npm install
 npm run serve
 ```
 
-O frontend roda em http://localhost:8080 e chama o backend no endereço do `.env.local` (veja abaixo).
+Abra http://localhost:8080 no Edge ou no Chrome e entre com o e-mail e a senha do gestor.
 
-> ⚠️ O backend precisa ter o **CORS habilitado** (`app.enableCors()` no `main.ts`). Sem isso, o navegador bloqueia as chamadas do frontend, porque eles rodam em portas diferentes.
+> No `.env` do backend, `CORS_ORIGINS` precisa ter `http://localhost:8080`. Sem isso, o login dá "Origem não permitida".
 
----
+## Comandos
+
+| Comando | Para que serve |
+|---|---|
+| `npm run serve` | roda o frontend em modo de desenvolvimento (recarrega sozinho a cada mudança) |
+| `npm run lint` | confere o padrão do código; rode antes de abrir um Pull Request |
+| `npm run build` | gera a versão de produção na pasta `dist/` |
 
 ## Configuração (`.env.local`)
-
-Copie o arquivo de exemplo e ajuste se precisar:
 
 ```bash
 cp .env.example .env.local
@@ -74,57 +83,43 @@ cp .env.example .env.local
 
 | Variável | Padrão | Para que serve |
 |---|---|---|
-| `VUE_APP_API_URL` | `http://localhost:3000` | endereço do backend |
-| `VUE_APP_AUTH_MOCK` | ligado | `true`: login simulado, sem backend (senha `Senha123`). `false`: usa as rotas `/auth` do backend |
-| `VUE_APP_EXIGIR_LOGIN` | desligado | `true`: todas as telas exigem login. `false`: as telas abrem sem login (útil durante o desenvolvimento) |
+| `VUE_APP_API_URL` | `http://localhost:3000/api` | endereço do backend, **com** o prefixo `/api` |
 
-O `.env.local` **não vai para o GitHub**: cada pessoa tem o seu. Depois de alterar, **reinicie** o `npm run serve`.
-
-**Para uso real**, com o login do backend pronto:
-
-```
-VUE_APP_AUTH_MOCK=false
-VUE_APP_EXIGIR_LOGIN=true
-```
+O `.env.local` **não vai para o GitHub**: cada pessoa tem o seu. Depois de alterar, reinicie o `npm run serve`.
 
 ---
+
+## Perfis de usuário
+
+| Perfil | O que pode fazer |
+|---|---|
+| **Colaborador** | todas as telas de trabalho: Dashboard, Upload, Leituras com problema, Fila de revisão, Revisar ficha, Prontuários e Auditoria |
+| **Gestor** | tudo o que o colaborador faz e, além disso, a tela **Usuários**: cadastrar, inativar e reativar contas |
+
+Não existe cadastro aberto: só o gestor cria contas. A conta nova recebe uma **senha provisória**, e a pessoa precisa criar a própria senha no primeiro acesso.
 
 ## Fluxo de uma ficha
 
 ```
-Upload ──► IA lê a ficha ──► Fila de revisão ──► Revisão humana ──► Aprovada ──► Prontuário
-                                                        │
-                                                        ├──► Com pendência (volta para a fila)
-                                                        └──► Recusada (não entra no prontuário)
+Upload ──► IA lê a ficha ──► Fila de revisão ──► Revisão humana ──► Validada ──► Prontuário
+              │                                        │
+              └──► Falha na leitura                    ├──► Com pendência (volta para a fila)
+                   (Leituras com problema,             └──► Recusada (não entra no prontuário)
+                    botão Reprocessar)
 ```
 
-| Status | Significado |
-|---|---|
-| `processando` | a IA está lendo a ficha |
-| `erro_leitura` | a IA não conseguiu ler |
-| `digitalizada` | lida pela IA, aguardando revisão |
-| `em_revisao` | alguém está revisando |
-| `com_pendencia` | falta informação; volta para a fila |
-| `aprovada` | conferida e gravada no prontuário |
-| `recusada` | documento inválido ou ilegível |
+| Status no backend | Nome na tela | Significado |
+|---|---|---|
+| `ENVIADA` | Na fila da IA | o arquivo chegou e espera a leitura |
+| `LENDO` | Lendo com IA | a IA está lendo |
+| `FALHA_LEITURA` | Erro na leitura | a IA não conseguiu ler; dá para reprocessar depois de 5 minutos |
+| `AGUARDANDO_REVISAO` | Aguardando revisão | lida pela IA, esperando uma pessoa |
+| `EM_REVISAO` | Em revisão | alguém está conferindo |
+| `COM_PENDENCIA` | Com pendência | falta informação; o motivo aparece no topo da revisão |
+| `VALIDADA` | Validada | conferida e gravada no prontuário |
+| `RECUSADA` | Recusada | documento ilegível ou não é uma ficha do hemocentro |
 
-**Só fichas `aprovada` aparecem no prontuário, no dashboard e na migração futura.**
-
-## Rotas do backend usadas pelo frontend
-
-Todas as chamadas ficam em [`src/services/api.ts`](src/services/api.ts). Se um nome de rota mudar no backend, só esse arquivo precisa ser ajustado.
-
-| Rota | Usada em |
-|---|---|
-| `POST /fichas` (arquivo no campo `file`) | Upload |
-| `GET /fichas` | Fila de revisão |
-| `GET /fichas/:id` e `GET /fichas/:id/arquivo` | Revisar ficha |
-| `PUT /fichas/:id` | Salvar rascunho |
-| `POST /fichas/:id/aprovar`, `/pendencia`, `/recusar` | Ações da revisão |
-| `GET /pacientes?nome=&dataNascimento=&nomeMae=` | Consulta de prontuário |
-| `POST /auth/login`, `/auth/cadastro`, `/auth/esqueci-senha` | Login |
-
-O detalhe de cada rota (campos enviados e recebidos) está na descrição do Pull Request em que ela foi criada.
+**Só o que foi validado aparece no prontuário.** O que a IA leu é só uma sugestão até a aprovação.
 
 ---
 
@@ -132,32 +127,36 @@ O detalhe de cada rota (campos enviados e recebidos) está na descrição do Pul
 
 ```
 src/
-├── router/      endereço de cada tela e regra de login
-├── layouts/     moldura das telas (menu e cabeçalho; tela de login)
-├── views/       as telas
-├── components/  peças reaproveitáveis (campo de data, cabeçalho de página, campos da revisão…)
-├── domain/      regras do negócio, sem visual (tipo sanguíneo, fenótipo, conferência da ficha)
-├── services/    conversa com o backend (api.ts) e sessão de login
-├── utils/       funções auxiliares (formatação de datas…)
-└── styles/      cores e estilos usados no sistema todo
+├── router/       endereço de cada tela e regras de acesso (login, gestor, troca de senha)
+├── layouts/      moldura das telas: menu e topo (AppLayout) ou tela de login (AuthLayout)
+├── views/        as telas (uma por arquivo; auth/ tem login, senha e afins)
+├── components/   peças reaproveitáveis, separadas por tela (revisao/, prontuario/, dashboard/…)
+├── composables/  lógica reaproveitável com estado: avisos flutuantes e formulários
+├── domain/       regras do negócio, sem visual: conferência da ficha, fenótipo, tradução de valores
+├── services/     conversa com o backend (api.ts) e sessão de login (sessao.ts)
+├── utils/        funções auxiliares: datas, mensagens de erro, validação de campos
+└── styles/       cores e estilos usados no sistema todo
 ```
+
+Os detalhes de cada pasta e o passo a passo para criar uma tela estão em [docs/arquitetura.md](docs/arquitetura.md).
 
 ---
 
-## Como contribuir (fluxo do grupo)
+## Como contribuir
 
 1. Atualize a `main` e crie uma branch para a tarefa:
    ```bash
    git checkout main
-   git pull
+   git pull origin main
    git checkout -b feature/nome-da-tarefa
    ```
-   Prefixos: `feature/` (funcionalidade nova), `fix/` (correção) e `docs/` (documentação).
-2. Faça commits pequenos, com mensagens que digam o que mudou.
-3. Envie a branch e abra um **Pull Request** para a `main`, com uma descrição do que foi feito e de como testar.
-4. Outra pessoa do grupo revisa e faz o **merge**.
+   Prefixos: `feature/` (funcionalidade nova), `ajuste/` ou `fix/` (correção) e `docs/` (documentação).
+2. Rode `npm run serve` e `npm run lint` e confira que não há erros.
+3. Faça commits pequenos, com mensagens que digam o que mudou.
+4. Envie a branch e abra um **Pull Request** para a `main`, dizendo o que foi feito e como testar.
+5. Outra pessoa do grupo revisa, testa com o backend e faz o merge.
 
-Se a `main` mudar enquanto você trabalha, traga as novidades para a sua branch com `git pull origin main`.
+**Nada vai direto para a `main`.** Envio direto já quebrou a compilação para o grupo inteiro.
 
 ---
 
@@ -165,17 +164,20 @@ Se a `main` mudar enquanto você trabalha, traga as novidades para a sua branch 
 
 | Problema | Solução |
 |---|---|
-| "Não foi possível conectar ao servidor" | o backend não está rodando, ou o `VUE_APP_API_URL` está com o endereço errado |
-| O navegador mostra erro de **CORS** no console (F12) | habilitar o CORS no backend (`app.enableCors()`) |
-| O site abriu na porta 8081 em vez de 8080 | já existe outro `npm run serve` aberto; feche o terminal antigo |
-| Mudei o `.env.local` e nada aconteceu | reinicie o `npm run serve` (Ctrl + C e rode de novo) |
-| `bash: [200~git: command not found` | entrou um código invisível ao colar no terminal; digite o comando ou cole com o botão direito |
+| "Não foi possível conectar ao servidor" | o backend não está rodando, ou o `VUE_APP_API_URL` está errado |
+| "Origem não permitida" ao entrar | coloque `http://localhost:8080` no `CORS_ORIGINS` do `.env` do backend e reinicie o backend |
+| Toda tela volta para o login | a sessão expirou (dura 4 horas) ou o backend foi reiniciado com o banco recriado; entre de novo |
+| O site abriu na porta 8081 | já existe outro `npm run serve` aberto; feche o terminal antigo |
+| Mudei o `.env.local` e nada aconteceu | reinicie o `npm run serve` |
+| "Compiled with problems" depois de um `git pull` | alguém enviou código com erro; avise o grupo com o print da mensagem |
+| Uma janela do sistema não abre no navegador do VS Code | use o Edge ou o Chrome |
 
 ---
 
 ## Dados e privacidade
 
 O sistema trata **dados de saúde**, considerados sensíveis pela LGPD. Por isso:
-- **não use dados reais de pacientes** em testes, prints ou commits;
-- o arquivo `.env.local` (com endereços e configurações) **nunca** deve ir para o GitHub;
-- a proteção dos dados depende do backend conferir o login em todas as rotas.
+
+- **não use dados reais de pacientes** em testes, prints, commits ou no grupo;
+- os arquivos `.env` e `.env.local` **nunca** vão para o GitHub;
+- o frontend não guarda a sessão de login: ela fica num cookie protegido, que o JavaScript não lê (veja [docs/arquitetura.md](docs/arquitetura.md)).
