@@ -6,9 +6,14 @@ export const letrasENumeros = (msg = 'Combine letras e números.'): Regra => (v)
   /[A-Za-z]/.test(v) && /\d/.test(v) ? '' : msg
 export const igualA = (outroCampo: string, msg: string): Regra => (v, todos) =>
   v === todos[outroCampo] ? '' : msg
-
-// Mesma regra do backend: de 8 a 64 caracteres (frases com espaço são bem-vindas).
+export const MSG_REGRA_SENHA =
+  'A senha deve ter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.'
+export const DICA_REGRA_SENHA =
+  'De 8 a 64 caracteres, com maiúscula, minúscula, número e caractere especial (ex.: ! @ # $).'
 export const politicaSenha = (): Regra => (v) => {
   const tamanho = Array.from(v).length
-  return tamanho >= 8 && tamanho <= 64 ? '' : 'A senha deve ter entre 8 e 64 caracteres.'
+  if (tamanho < 8 || tamanho > 64) return 'A senha deve ter entre 8 e 64 caracteres.'
+  const ok =
+    /\p{Ll}/u.test(v) && /\p{Lu}/u.test(v) && /\d/.test(v) && /[^\p{L}\p{N}\s]/u.test(v)
+  return ok ? '' : MSG_REGRA_SENHA
 }

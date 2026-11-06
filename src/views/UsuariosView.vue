@@ -91,7 +91,7 @@
             <input type="email" v-model="form.email" required placeholder="Ex: joao@hemocentro.mt.gov.br" />
           </div>
 
-          <div class="campo campo-senha">
+                   <div class="campo campo-senha">
             <label>Senha Inicial</label>
             <div class="input-container">
               <input 
@@ -99,12 +99,14 @@
                 v-model="form.senha" 
                 required 
                 placeholder="Insira a palavra-passe" 
+                autocomplete="new-password"
               />
               <button type="button" class="botao-olho" @click="mostrarSenha = !mostrarSenha" tabindex="-1">
                 <EyeOff v-if="mostrarSenha" :size="18" />
                 <Eye v-else :size="18" />
               </button>
             </div>
+            <IndicadorSenha :senha="form.senha" />
           </div>
           
           <div class="campo">
@@ -135,6 +137,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import IndicadorSenha from '@/components/ui/IndicadorSenha.vue'
+import { politicaSenha } from '@/utils/validacao'
 import { Eye, EyeOff } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import { 
@@ -203,8 +207,14 @@ function abrirModalCadastro() {
 }
 
 async function salvarUsuario() {
-  salvando.value = true
   erroModal.value = ''
+  const erroSenha = politicaSenha()(form.value.senha, {})
+  if (erroSenha) {
+    erroModal.value = erroSenha
+    return
+  }
+
+  salvando.value = true
 
   try {
     const payload = {
@@ -510,5 +520,11 @@ onMounted(() => {
 .botao-cancelar:hover {
   background: #f5f5f5;
   color: #333;
+}
+.dica-senha {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
 }
 </style>

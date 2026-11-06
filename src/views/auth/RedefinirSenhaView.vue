@@ -40,7 +40,8 @@
         <p v-if="erroGeral" class="form__aviso" role="alert">{{ erroGeral }}</p>
 
         <CampoTexto v-model="valores.senha" rotulo="Nova senha" tipo="password" autocomplete="new-password"
-            dica="De 8 a 64 caracteres. Pode ser uma frase." :erro="erros.senha" @blur="validarCampo('senha')" />
+            :erro="erros.senha" @blur="validarCampo('senha')" />
+        <IndicadorSenha :senha="valores.senha" />
 
         <CampoTexto v-model="valores.confirmarSenha" rotulo="Confirmar nova senha" tipo="password"
             autocomplete="new-password" :erro="erros.confirmarSenha" @blur="validarCampo('confirmarSenha')" />
