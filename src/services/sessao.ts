@@ -1,14 +1,11 @@
 import { ref, computed } from 'vue';
-// Se a interface Usuario vier do arquivo de domínio, você pode importar assim e remover a declaração abaixo.
-// import type { Usuario } from '@/domain/usuario'; 
 
 export interface Usuario {
   id: number
   nome: string
   email: string
-  senha: string 
+  trocarSenhaNoProximoLogin?: boolean
   perfil: 'GESTOR' | 'COLABORADOR'
-  // A propriedade "permissoes" foi removida daqui.
 }
 
 // A sessão de verdade fica num cookie que o JavaScript não lê (httpOnly).
@@ -40,11 +37,17 @@ export const csrfAtual = computed(() => sessao.value?.csrfToken ?? null)
 // Id de quem está logado, em texto, para comparar com o revisor da ficha.
 export const idUsuarioAtual = computed(() => (sessao.value ? String(sessao.value.usuario.id) : null))
 
-// AS NOVAS VALIDAÇÕES DE PERFIL FICAM AQUI:
 export const ehGestor = computed(() => sessao.value?.usuario.perfil === 'GESTOR')
 export const ehColaborador = computed(() => sessao.value?.usuario.perfil === 'COLABORADOR')
 
-// A função "temPermissao" foi completamente removida.
+// Conta criada pelo gestor com senha provisória: até trocar, o backend bloqueia todas as rotas (403).
+export const precisaTrocarSenha = computed(() => sessao.value?.usuario.trocarSenhaNoProximoLogin === true)
+
+export function marcarTrocaDeSenha(pendente: boolean): void {
+  if (!sessao.value) return
+  sessao.value = { ...sessao.value, usuario: { ...sessao.value.usuario, trocarSenhaNoProximoLogin: pendente } }
+  sessionStorage.setItem(CHAVE, JSON.stringify(sessao.value))
+}
 
 export function iniciarSessao(nova: Sessao): void {
   sessao.value = nova

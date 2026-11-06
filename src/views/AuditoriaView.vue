@@ -294,7 +294,7 @@ import {
   buscarEventoAuditoria,
   exportarTrilhaAuditoria,
   listarEventosAuditoria,
-  listarUsuarios,
+  listarUsuariosAuditoria,
   urlArquivoDocumento
 } from '@/services/api'
 import { useAvisos } from '@/composables/useAvisos'
@@ -445,7 +445,7 @@ export default defineComponent({
     onMounted(async () => {
       carregar()
       try {
-        usuarios.value = await listarUsuarios()
+        usuarios.value = await listarUsuariosAuditoria()
       } catch {
         // O filtro de usuário é opcional: se falhar, a lista continua funcionando.
       }

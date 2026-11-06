@@ -1,5 +1,5 @@
 import { Reacao, interpretarReacao } from '@/domain/fenotipo'
-import { csrfAtual, encerrarSessao, Sessao } from '@/services/sessao'
+import { csrfAtual, encerrarSessao, marcarTrocaDeSenha, Sessao } from '@/services/sessao'
 import { CLASSES_ANTICORPO, ClasseAnticorpo, MotivoRecusa, StatusFicha } from '@/domain/revisao'
 import { TipoEventoApi } from '@/domain/auditoria'
 import { ehErroTecnico, MENSAGEM_ERRO_GENERICA } from '@/utils/erros'
@@ -28,6 +28,15 @@ async function chamar(caminho: string, opcoes: RequestInit = {}): Promise<Respon
     encerrarSessao()
     const voltar = encodeURIComponent(location.pathname + location.search)
     location.assign(`/login?redirect=${voltar}`)
+  }
+
+  // Senha provisória ainda não trocada: o backend responde 403 com este marcador em qualquer rota.
+  if (resposta.status === 403 && !caminho.startsWith('/auth/')) {
+    const corpo = await resposta.clone().json().catch(() => null)
+    if (corpo?.trocarSenhaNoProximoLogin) {
+      marcarTrocaDeSenha(true)
+      if (location.pathname !== '/trocar-senha') location.assign('/trocar-senha')
+    }
   }
   return resposta
 }
@@ -334,6 +343,10 @@ export function entrar(dados: { email: string; senha: string }): Promise<Sessao>
 
 export function consultarSessao(): Promise<Sessao> {
   return requisitar<Sessao>('/auth/sessao')
+}
+
+export async function trocarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
+  await enviarJson<unknown>('/auth/trocar-senha', 'POST', { senhaAtual, novaSenha })
 }
 
 export async function sair(): Promise<void> {
@@ -720,6 +733,10 @@ export interface CriarUsuarioPayload {
 
 // Remova a função: export async function cadastrar(dados: { nome: string...
 // E adicione as novas funções de gestão:
+
+export function listarUsuariosAuditoria(): Promise<{ id: number; nome: string }[]> {
+  return requisitar<{ id: number; nome: string }[]>('/auditoria/eventos/usuarios')
+}
 
 export function listarUsuarios(ativo?: boolean): Promise<UsuarioGerenciamentoApi[]> {
   const query = ativo !== undefined ? `?ativo=${ativo}` : ''
