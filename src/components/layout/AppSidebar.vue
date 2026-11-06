@@ -32,10 +32,6 @@
         <span>Usuários</span>
       </router-link>
     </nav>
-
-    <div class="menu__rodape">
-      <a class="menu__item" href="#"><CircleHelp :size="16" /> Guia de conferência</a>
-    </div>
   </aside>
 </template>
 
