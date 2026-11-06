@@ -9,8 +9,9 @@
 
     <CampoTexto v-model="valores.senhaAtual" rotulo="Senha provisória (atual)" tipo="password"
       autocomplete="current-password" :erro="erros.senhaAtual" @blur="validarCampo('senhaAtual')" />
-    <CampoTexto v-model="valores.senha" rotulo="Nova senha" tipo="password" autocomplete="new-password"
-      dica="De 8 a 64 caracteres. Pode ser uma frase." :erro="erros.senha" @blur="validarCampo('senha')" />
+        <CampoTexto v-model="valores.senha" rotulo="Nova senha" tipo="password" autocomplete="new-password"
+      :erro="erros.senha" @blur="validarCampo('senha')" />
+    <IndicadorSenha :senha="valores.senha" />
     <CampoTexto v-model="valores.confirmarSenha" rotulo="Confirmar nova senha" tipo="password"
       autocomplete="new-password" :erro="erros.confirmarSenha" @blur="validarCampo('confirmarSenha')" />
 
@@ -28,6 +29,7 @@
 import { defineComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import CampoTexto from '@/components/ui/CampoTexto.vue'
+import IndicadorSenha from '@/components/ui/IndicadorSenha.vue'
 import { useFormulario } from '@/composables/useFormulario'
 import { sair, trocarSenha } from '@/services/api'
 import { encerrarSessao, marcarTrocaDeSenha } from '@/services/sessao'
@@ -35,7 +37,7 @@ import { igualA, obrigatorio, politicaSenha } from '@/utils/validacao'
 
 export default defineComponent({
   name: 'TrocarSenhaView',
-  components: { CampoTexto },
+  components: { CampoTexto , IndicadorSenha },
   setup() {
     const roteador = useRouter()
 
