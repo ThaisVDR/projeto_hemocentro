@@ -74,7 +74,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { AlertTriangle } from 'lucide-vue-next'
+import { AlertTriangle } from '@lucide/vue'
 import { DadosImunohematologicos, montarResumoImunohematologico } from '@/domain/resumoImunohematologico'
 
 export default defineComponent({

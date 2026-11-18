@@ -62,7 +62,7 @@ import {
   PanelLeft,
   Upload,
   Users
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const CHAVE_RECOLHIDO = 'hmt:menu-recolhido'
 

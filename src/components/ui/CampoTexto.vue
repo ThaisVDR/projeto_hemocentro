@@ -31,7 +31,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, ref } from 'vue'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff } from '@lucide/vue'
 
 let contador = 0
 

@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, ref } from 'vue'
-import { RefreshCw, Upload } from 'lucide-vue-next'
+import { RefreshCw, Upload } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import CampoData from '@/components/CampoData.vue'
 import CartaoIndicador from '@/components/dashboard/CartaoIndicador.vue'

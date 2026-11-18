@@ -63,7 +63,7 @@
 <script lang="ts">
 import { traduzirAboRh, traduzirRaca, traduzirSexo } from '@/domain/traducao'
 import { computed, defineComponent, PropType } from 'vue'
-import { CheckCircle } from 'lucide-vue-next'
+import { CheckCircle } from '@lucide/vue'
 import { PacienteDetalheApi } from '@/services/api'
 import { calcularIdade, formatarData, iniciais } from '@/utils/formatacao'
 

@@ -283,7 +283,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, reactive, ref } from 'vue'
-import { Download, ExternalLink, FileText, Filter, Info, ListChecks, PenLine, Search, ShieldCheck, X } from 'lucide-vue-next'
+import { Download, ExternalLink, FileText, Filter, Info, ListChecks, PenLine, Search, ShieldCheck, X } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { OPCOES_TIPO_EVENTO, TipoEventoApi, infoDoTipo, partesDataHora } from '@/domain/auditoria'
 import {

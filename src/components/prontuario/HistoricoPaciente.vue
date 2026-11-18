@@ -45,7 +45,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, watch } from 'vue'
-import { FileText } from 'lucide-vue-next'
+import { FileText } from '@lucide/vue'
 import { buscarHistorico, HistoricoItemApi, urlArquivoDocumento } from '@/services/api'
 import { formatarData, formatarDataHora } from '@/utils/formatacao'
 
