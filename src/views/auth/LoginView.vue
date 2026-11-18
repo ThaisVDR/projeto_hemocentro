@@ -41,7 +41,7 @@ import { defineComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CampoTexto from '@/components/ui/CampoTexto.vue'
 import { useFormulario } from '@/composables/useFormulario'
-import { entrar } from '@/services/api'
+import { consultarSessao, entrar } from '@/services/api'
 import { iniciarSessao, precisaTrocarSenha } from '@/services/sessao'
 import { email, obrigatorio } from '@/utils/validacao'
 
@@ -64,6 +64,19 @@ export default defineComponent({
     async function aoEnviar() {
       const ok = await enviar(async (dados) => {
         const resposta = await entrar(dados)
+
+        // Confirma que o navegador guardou o cookie de sessão. Se não guardou
+        // (cookie Secure em http://, por exemplo), a próxima chamada daria 401 e a
+        // tela voltaria para o login sem explicação.
+        try {
+          await consultarSessao()
+        } catch {
+          throw new Error(
+            'Login aceito, mas o navegador não guardou a sessão. ' +
+            'Acesse o sistema por HTTPS (ex.: https://localhost) e confira se o endereço ' +
+            'está em CORS_ORIGINS no backend.'
+          )
+        }
         iniciarSessao(resposta)
       })
 
