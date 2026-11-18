@@ -1,5 +1,5 @@
 import { Component } from 'vue'
-import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles } from 'lucide-vue-next'
+import { AlertCircle, Check, Circle, Minus, Pencil, Sparkles } from '@lucide/vue'
 import { EstadoCampo } from '@/domain/revisao'
 
 // Ícone e significado de cada estado de conferência, usados no campo e na legenda.

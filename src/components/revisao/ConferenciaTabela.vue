@@ -15,7 +15,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { Check, Circle, Sparkles, Undo2 } from 'lucide-vue-next'
+import { Check, Circle, Sparkles, Undo2 } from '@lucide/vue'
 import { Conferencia } from '@/domain/revisao'
 
 export default defineComponent({

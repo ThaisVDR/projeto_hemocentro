@@ -139,7 +139,7 @@
 import { ref, computed, onMounted } from 'vue'
 import IndicadorSenha from '@/components/ui/IndicadorSenha.vue'
 import { politicaSenha } from '@/utils/validacao'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { 
   listarUsuarios, 

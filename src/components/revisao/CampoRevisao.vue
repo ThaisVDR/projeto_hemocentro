@@ -51,7 +51,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { Check, Minus, Undo2 } from 'lucide-vue-next'
+import { Check, Minus, Undo2 } from '@lucide/vue'
 import { CampoRevisavel } from '@/domain/revisao'
 import CampoData from '@/components/CampoData.vue'
 import { estadoCampo } from './estadosCampo'

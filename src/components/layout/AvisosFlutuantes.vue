@@ -13,7 +13,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { AlertTriangle, CheckCircle, Info, X, XCircle } from 'lucide-vue-next'
+import { AlertTriangle, CheckCircle, Info, X, XCircle } from '@lucide/vue'
 import { useAvisos } from '@/composables/useAvisos'
 
 export default defineComponent({

@@ -87,7 +87,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, ref } from 'vue'
-import { RefreshCw, Search, Upload } from 'lucide-vue-next'
+import { RefreshCw, Search, Upload } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { STATUS_FICHA, StatusFicha } from '@/domain/revisao'
 import { FICHAS_POR_PAGINA, FichaFilaApi, listarFilaRevisao, recusarFicha } from '@/services/api'

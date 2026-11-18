@@ -399,7 +399,7 @@ import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, reacti
 import { useRoute, useRouter } from 'vue-router'
 import {
   AlertTriangle, ArrowLeft, Ban, Check, ClipboardCheck, ClipboardList, Flag, Minus, Plus, Trash2, UserCheck, Users
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import ResumoImunohematologico from '@/components/ResumoImunohematologico.vue'
 import CampoRevisao from '@/components/revisao/CampoRevisao.vue'

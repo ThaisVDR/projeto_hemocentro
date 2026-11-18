@@ -166,7 +166,7 @@
 <script lang="ts">
 import { computed, defineComponent, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, CheckCircle, FileText } from 'lucide-vue-next'
+import { ArrowLeft, CheckCircle, FileText } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import CampoFicha from '@/components/ficha-completa/CampoFicha.vue'
 import SecaoTransfusoes from '@/components/ficha-completa/SecaoTransfusoes.vue'

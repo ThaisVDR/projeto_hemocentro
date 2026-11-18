@@ -29,7 +29,7 @@
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronRight, LogIn, LogOut } from 'lucide-vue-next'
+import { ChevronRight, LogIn, LogOut } from '@lucide/vue'
 import { sair as sairNoBackend } from '@/services/api'
 import { encerrarSessao, usuarioLogado } from '@/services/sessao'
 import { iniciais } from '@/utils/formatacao'

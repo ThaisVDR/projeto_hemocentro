@@ -86,7 +86,7 @@
 
 <script lang="ts">
 import { defineComponent, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { ListChecks, Plus, UploadCloud } from 'lucide-vue-next'
+import { ListChecks, Plus, UploadCloud } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import BotaoReprocessar from '@/components/upload/BotaoReprocessar.vue'
 import { STATUS_FICHA } from '@/domain/revisao'

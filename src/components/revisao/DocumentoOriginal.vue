@@ -62,7 +62,7 @@
 import { computed, defineComponent, PropType, ref } from 'vue'
 import {
   ChevronLeft, ChevronRight, FileText, Maximize, Minus, Plus, RotateCw, UploadCloud
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { DOCUMENTOS_DA_FICHA } from '@/domain/revisao'
 
 export interface ArquivoDocumento {

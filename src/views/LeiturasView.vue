@@ -75,7 +75,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
-import { RefreshCw, Upload } from 'lucide-vue-next'
+import { RefreshCw, Upload } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import BotaoReprocessar from '@/components/upload/BotaoReprocessar.vue'
 import { STATUS_FICHA } from '@/domain/revisao'

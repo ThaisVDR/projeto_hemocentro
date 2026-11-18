@@ -28,7 +28,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { Droplet } from 'lucide-vue-next'
+import { Droplet } from '@lucide/vue'
 
 export default defineComponent({
   name: 'AuthLayout',
