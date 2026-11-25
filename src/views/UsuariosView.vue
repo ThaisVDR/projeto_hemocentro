@@ -141,13 +141,13 @@ import IndicadorSenha from '@/components/ui/IndicadorSenha.vue'
 import { politicaSenha } from '@/utils/validacao'
 import { Eye, EyeOff } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
-import { 
-  listarUsuarios, 
-  criarUsuario, 
-  inativarUsuario, 
-  reativarUsuario, 
-  UsuarioGerenciamentoApi, 
-  ErroApi 
+import {
+  listarUsuarios,
+  criarUsuario,
+  inativarUsuario,
+  reativarUsuario,
+  CriarUsuarioPayload,
+  UsuarioGerenciamentoApi
 } from '@/services/api'
 
 // Controle de visibilidade da senha
@@ -217,23 +217,22 @@ async function salvarUsuario() {
   salvando.value = true
 
   try {
-    const payload = {
-      nome: form.value.nome.trim(),
-      email: form.value.email.trim(),
-      senha: form.value.senha,
-      perfil: String(form.value.perfil).toUpperCase()
-    }
-    
-    await criarUsuario(payload as any)
-    
+const payload: CriarUsuarioPayload = {
+  nome: form.value.nome.trim(),
+  email: form.value.email.trim(),
+  senha: form.value.senha,
+  perfil: form.value.perfil
+}
+
+await criarUsuario(payload)
+
+
     mostrarModal.value = false
     mostrarAviso('Utilizador registado com sucesso!', 'sucesso')
     await carregarTodos()
-  } catch (e: any) {
-    erroModal.value = e instanceof ErroApi 
-      ? e.message 
-      : (e?.message || 'Erro ao registar o utilizador.')
-  } finally {
+} catch (e) {
+  erroModal.value = e instanceof Error ? e.message : 'Erro ao registar o utilizador.'
+} finally {
     salvando.value = false
   }
 }
