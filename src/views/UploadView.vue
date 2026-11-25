@@ -107,7 +107,7 @@ interface Envio {
 }
 
 // Passado esse tempo na fila/lendo sem resposta, a pessoa pode reprocessar.
-const DEMORA_MS = 3 * 60 * 1000
+const DEMORA_MS = 20 * 60 * 1000
 
 // Fora do componente: ao sair da tela e voltar, a lista e o acompanhamento continuam.
 const envios = reactive<Envio[]>([])
@@ -207,7 +207,7 @@ export default defineComponent({
     }
 
     function podeReprocessar(envio: Envio): boolean {
-      return falhou(envio) || demorando(envio)
+      return falhou(envio)
     }
 
     // Selo da situação; nunca quebra se o backend mandar um status desconhecido.
