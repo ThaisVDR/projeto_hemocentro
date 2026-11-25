@@ -77,7 +77,7 @@
 
           <div class="filtros__acoes">
             <button type="submit" class="botao botao--primario" :disabled="carregando">
-              <Filter :size="14" /> Filtrar
+              <IconeFiltro :size="14" /> Filtrar
             </button>
             <button v-if="temFiltro" type="button" class="botao" @click="limparFiltros">
               <X :size="14" /> Limpar
@@ -305,7 +305,7 @@ const FILTROS_VAZIOS = (): FiltrosAuditoria => ({ busca: '', de: '', ate: '', ti
 export default defineComponent({
   name: 'AuditoriaView',
   components: {
-    PageHeader, Download, ExternalLink, FileText, Filter, Info, ListChecks, PenLine, Search, ShieldCheck, X
+    PageHeader, Download, ExternalLink, FileText, IconeFiltro: Filter, Info, ListChecks, PenLine, Search, ShieldCheck, X
   },
   setup() {
     const { avisar } = useAvisos()
