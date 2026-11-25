@@ -217,22 +217,21 @@ async function salvarUsuario() {
   salvando.value = true
 
   try {
-const payload: CriarUsuarioPayload = {
-  nome: form.value.nome.trim(),
-  email: form.value.email.trim(),
-  senha: form.value.senha,
-  perfil: form.value.perfil
-}
+    const payload: CriarUsuarioPayload = {
+      nome: form.value.nome.trim(),
+      email: form.value.email.trim(),
+      senha: form.value.senha,
+      perfil: form.value.perfil
+    }
 
-await criarUsuario(payload)
-
-
+    await criarUsuario(payload)
+    
     mostrarModal.value = false
     mostrarAviso('Utilizador registado com sucesso!', 'sucesso')
     await carregarTodos()
-} catch (e) {
-  erroModal.value = e instanceof Error ? e.message : 'Erro ao registar o utilizador.'
-} finally {
+  } catch (e) {
+    erroModal.value = e instanceof Error ? e.message : 'Erro ao registar o utilizador.'
+  } finally {
     salvando.value = false
   }
 }

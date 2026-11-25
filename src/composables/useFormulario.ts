@@ -3,7 +3,7 @@ import type { Regra } from '@/utils/validacao'
 import { ErroApi } from '@/services/api'
 
 function extrairMensagemAmigavel(e: unknown): string {
-    if (e instanceof ErroApi) {
+  if (e instanceof ErroApi) {
     if (e.status === 409) return 'E-mail ou registro já cadastrado no sistema.'
     if (e.status === 401) return 'E-mail ou senha incorretos.'
     if (e.status === 500) return 'Serviço temporariamente indisponível.'
@@ -12,6 +12,7 @@ function extrairMensagemAmigavel(e: unknown): string {
   if (e instanceof Error && e.message.trim()) return e.message
   return 'Não foi possível concluir. Tente novamente.'
 }
+
 export function useFormulario<T extends Record<string, string>>(
   inicial: T,
   regras: Partial<Record<keyof T, Regra[]>>
