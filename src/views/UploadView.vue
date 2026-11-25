@@ -92,6 +92,7 @@ import BotaoReprocessar from '@/components/upload/BotaoReprocessar.vue'
 import { STATUS_FICHA } from '@/domain/revisao'
 import { buscarLote, DocumentoLoteApi, enviarLote } from '@/services/api'
 import { mensagemErroLeitura } from '@/utils/erros'
+import { LIMITE_TAMANHO_MB, MAXIMO_ARQUIVOS_POR_ENVIO, TIPOS_ACEITOS } from '@/config/upload'
 
 interface Envio {
   chave: number
@@ -105,9 +106,6 @@ interface Envio {
   enviadoEm: number | null
 }
 
-// Mesmo limite e tipos aceitos pelo backend (src/config/upload.config.ts).
-const LIMITE_MB = 50
-const TIPOS = ['application/pdf', 'image/jpeg', 'image/png']
 // Passado esse tempo na fila/lendo sem resposta, a pessoa pode reprocessar.
 const DEMORA_MS = 3 * 60 * 1000
 
@@ -127,6 +125,13 @@ export default defineComponent({
       return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`
     }
 
+    // Divide uma lista em pedaços de no máximo `tamanho` itens.
+    function dividir<T>(itens: T[], tamanho: number): T[][] {
+      const partes: T[][] = []
+      for (let i = 0; i < itens.length; i += tamanho) partes.push(itens.slice(i, i + tamanho))
+      return partes
+    }
+
     async function enviarGrupo(grupo: Envio[]) {
       grupo.forEach(envio => {
         envio.estado = 'enviando'
@@ -141,9 +146,13 @@ export default defineComponent({
           grupo[i].estado = 'enviado'
         })
       } catch (e) {
+        const mensagem = (e as Error).message
+        const muitoGrande = /413|too large|file too large/i.test(mensagem)
         grupo.forEach(envio => {
           envio.estado = 'erro'
-          envio.erro = (e as Error).message
+          envio.erro = muitoGrande
+            ? `Envio grande demais para o servidor. Tente enviar menos arquivos por vez.`
+            : mensagem
         })
       }
     }
@@ -227,8 +236,8 @@ export default defineComponent({
     async function adicionar(arquivos: FileList | null | undefined) {
       const novos: Envio[] = Array.from(arquivos ?? []).map((arquivo): Envio => {
         let erro: string | null = null
-        if (!TIPOS.includes(arquivo.type)) erro = 'Tipo não aceito. Envie PDF, JPG ou PNG.'
-        else if (arquivo.size > LIMITE_MB * 1024 * 1024) erro = `Arquivo maior que ${LIMITE_MB} MB.`
+        if (!(TIPOS_ACEITOS as readonly string[]).includes(arquivo.type)) erro = 'Tipo não aceito. Envie PDF, JPG ou PNG.'
+        else if (arquivo.size > LIMITE_TAMANHO_MB * 1024 * 1024) erro = `Arquivo maior que ${LIMITE_TAMANHO_MB} MB.`
         return {
           chave: ++proximaChave,
           arquivo,
@@ -242,9 +251,11 @@ export default defineComponent({
         }
       })
       envios.unshift(...novos)
-      // Todos os arquivos válidos vão juntos, num único lote.
+      // Os arquivos válidos são enviados em lotes de no máximo MAXIMO_ARQUIVOS_POR_ENVIO.
       const validos = envios.filter(e => novos.some(n => n.chave === e.chave) && e.estado === 'enviando')
-      if (validos.length) await enviarGrupo(validos)
+      for (const parte of dividir(validos, MAXIMO_ARQUIVOS_POR_ENVIO)) {
+        await enviarGrupo(parte)
+      }
     }
 
     function aoEscolher(evento: Event) {
@@ -260,7 +271,7 @@ export default defineComponent({
 
     return {
       envios, arrastando, enviarGrupo, aoEscolher, aoSoltar, aoReprocessar, erroDeLeitura: mensagemErroLeitura,
-      situacao, demorando, podeReprocessar, limiteMb: LIMITE_MB, tiposAceitos: TIPOS.join(',')
+      situacao, demorando, podeReprocessar, limiteMb: LIMITE_TAMANHO_MB, tiposAceitos: TIPOS_ACEITOS.join(',')
     }
   }
 })
