@@ -316,11 +316,33 @@ export interface ColaboradorApi {
 }
 
 export function buscarColaboradores(busca: string): Promise<ColaboradorApi[]> {
-  return requisitar<ColaboradorApi[]>(`/colaboradores?busca=${encodeURIComponent(busca)}`)
+  return requisitar<ColaboradorApi[]>(`/colaboradores?ativo=true&busca=${encodeURIComponent(busca)}`)
 }
 
 export function cadastrarColaborador(nome: string): Promise<ColaboradorApi> {
   return enviarJson<ColaboradorApi>('/colaboradores', 'POST', { nome: nome.trim() })
+}
+
+// ---------- Cadastros auxiliares ----------
+
+export type CadastroAuxiliar = 'colaboradores' | 'instituicoes'
+
+export interface ItemCadastroApi {
+  id: number
+  nome: string
+  ativo: boolean
+}
+
+export function listarCadastro(cadastro: CadastroAuxiliar): Promise<ItemCadastroApi[]> {
+  return requisitar<ItemCadastroApi[]>(`/${cadastro}/gerenciamento`)
+}
+
+export function salvarCadastro(cadastro: CadastroAuxiliar, nome: string, id?: number): Promise<ItemCadastroApi> {
+  return enviarJson<ItemCadastroApi>(id ? `/${cadastro}/${id}` : `/${cadastro}`, id ? 'PATCH' : 'POST', { nome: nome.trim() })
+}
+
+export function definirCadastroAtivo(cadastro: CadastroAuxiliar, id: number, ativo: boolean): Promise<void> {
+  return requisitar<void>(`/${cadastro}/${id}/${ativo ? 'reativar' : 'inativar'}`, { method: 'POST' })
 }
 
 // ---------- Cidades ----------

@@ -32,19 +32,24 @@
         <component :is="item.icone" :size="16" />
         <span class="menu__rotulo">{{ item.rotulo }}</span>
       </router-link>
-
-      <!-- Link exclusivo do Gestor -->
-      <router-link
-        v-if="ehGestor"
-        :to="{ name: 'usuarios' }"
-        class="menu__item"
-        active-class="menu__item--ativo"
-        :title="recolhido ? 'Usuários' : undefined"
-      >
-        <Users :size="16" />
-        <span class="menu__rotulo">Usuários</span>
-      </router-link>
     </nav>
+
+    <template v-if="administracao.length">
+      <p class="menu__secao menu__secao--admin">ADMINISTRAÇÃO</p>
+      <nav class="menu__itens">
+        <router-link
+          v-for="item in administracao"
+          :key="item.rota"
+          :to="{ name: item.rota }"
+          class="menu__item"
+          active-class="menu__item--ativo"
+          :title="recolhido ? item.rotulo : undefined"
+        >
+          <component :is="item.icone" :size="16" />
+          <span class="menu__rotulo">{{ item.rotulo }}</span>
+        </router-link>
+      </nav>
+    </template>
   </aside>
 </template>
 
@@ -52,6 +57,7 @@
 import { computed, defineComponent, ref } from 'vue'
 import { ehGestor } from '@/services/sessao'
 import {
+  BookUser,
   CircleAlert,
   CircleHelp,
   Droplet,
@@ -101,7 +107,13 @@ export default defineComponent({
       }
     }
 
-    return { itens, ehGestor, recolhido, alternar }
+    // Usuários é só do Gestor; cadastros auxiliares são de todos.
+    const administracao = computed(() => [
+      ...(ehGestor.value ? [{ rota: 'usuarios', rotulo: 'Usuários', icone: Users }] : []),
+      { rota: 'cadastros', rotulo: 'Cadastros auxiliares', icone: BookUser }
+    ])
+
+    return { itens, administracao, ehGestor, recolhido, alternar }
   }
 })
 </script>
@@ -233,6 +245,10 @@ export default defineComponent({
     opacity 0.14s ease 0.05s,
     max-height 0.18s var(--ease),
     margin 0.18s var(--ease);
+}
+
+.menu__secao--admin {
+  margin-top: 20px;
 }
 
 .menu--recolhido .menu__secao {

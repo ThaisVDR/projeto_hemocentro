@@ -83,6 +83,12 @@ const routes: RouteRecordRaw[] = [
         meta: { titulo: 'Gestão de Usuários', requerGestor: true }
       },
       {
+        path: 'cadastros',
+        name: 'cadastros',
+        component: () => import('@/views/CadastrosAuxiliaresView.vue'),
+        meta: { titulo: 'Cadastros auxiliares' }
+      },
+      {
         path: 'auditoria',
         name: 'auditoria',
         component: () => import('@/views/AuditoriaView.vue'),
