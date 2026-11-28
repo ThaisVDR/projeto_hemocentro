@@ -30,7 +30,10 @@ export const ROTULO_ABO_RH = {
 export const ROTULO_RESULTADO_TESTE = {
   NAO_REALIZADO: 'Não realizado',
   POSITIVO: 'Positivo',
-  NEGATIVO: 'Negativo'
+  NEGATIVO: 'Negativo',
+  COMPATIVEL: 'Compatível',
+  INCOMPATIVEL: 'Incompatível',
+  INCONCLUSIVO: 'Inconclusivo'
 } as const
 
 export const ROTULO_RH = {

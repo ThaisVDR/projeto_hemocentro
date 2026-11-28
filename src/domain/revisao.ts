@@ -312,6 +312,14 @@ export const RESULTADOS_TESTE: { valor: ResultadoTeste; rotulo: string }[] = [
   { valor: 'NAO_REALIZADO', rotulo: 'NR — não realizado' }
 ]
 
+// Prova cruzada tem enum próprio no backend (ResultadoProvaCruzada): nunca positivo/negativo.
+export const RESULTADOS_PROVA_CRUZADA = [
+  { valor: 'COMPATIVEL', rotulo: 'Compatível' },
+  { valor: 'INCOMPATIVEL', rotulo: 'Incompatível' },
+  { valor: 'INCONCLUSIVO', rotulo: 'Inconclusivo' },
+  { valor: 'NAO_REALIZADO', rotulo: 'NR — não realizado' }
+]
+
 // Entende o texto lido pela IA ("neg", "Negativo", "-", "não realizado"…). Devolve null se não reconhecer.
 export function lerResultadoTeste(texto?: string | null): ResultadoTeste | null {
   if (!texto) return null

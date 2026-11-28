@@ -185,7 +185,7 @@
                   <td>
                     <select v-model="linha.provaCruzada" @change="marcarEditado(ficha.transfusoesConferencia)">
                       <option :value="null">—</option>
-                      <option v-for="opcao in opcoesTeste" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}
+                      <option v-for="opcao in opcoesProvaCruzada" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}
                       </option>
                     </select>
                   </td>
@@ -414,7 +414,7 @@ import { ANTIGENOS_FICHA_FENOTIPAGEM, extrairAnticorpos, Reacao, REACOES } from 
 import { DadosImunohematologicos } from '@/domain/resumoImunohematologico'
 import {
   CampoRevisavel, Conferencia, confirmarConferencia, criarFichaVazia, criarTransfusaoVazia, desfazerConferencia, MotivoRecusa,
-  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, FichaEmRevisao,
+  desfazerNaoConsta, DOCUMENTOS_DA_FICHA, editarCampo, marcarNaoConsta, resumirConferencia, STATUS_FICHA, RESULTADOS_TESTE, RESULTADOS_PROVA_CRUZADA, FichaEmRevisao,
   CLASSES_ANTICORPO
 } from '@/domain/revisao'
 import {
@@ -855,6 +855,7 @@ export default defineComponent({
       reacoes: REACOES,
       colunasReacao: ['coombs', 'enzima', 'frio'] as const,
       opcoesTeste: RESULTADOS_TESTE,
+      opcoesProvaCruzada: RESULTADOS_PROVA_CRUZADA,
       classesAnticorpo: CLASSES_ANTICORPO,
       opcoesRacaCor: OPCOES_RACA,
       opcoesAboRh: OPCOES_ABO_RH,
